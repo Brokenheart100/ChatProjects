@@ -1,7 +1,5 @@
 ﻿// File: BKFluentChat\ViewModels\Pages\ContactsViewModel.cs (Simplified Version without Tabs)
 using BKFluentChat.Models;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 
@@ -82,13 +80,12 @@ namespace BKFluentChat.ViewModels.Pages
                 GroupName = "《高中...",
                 Signature = "花园在召唤你",
             };
-            teio.FeaturedPhotos.Add("pack://application:,,,/Assets/photo1.png");
-            teio.FeaturedPhotos.Add("pack://application:,,,/Assets/photo2.png");
-            teio.FeaturedPhotos.Add("pack://application:,,,/Assets/photo3.png");
-            teio.FeaturedPhotos.Add("pack://application:,,,/Assets/photo4.png");
-            teio.FeaturedPhotos.Add("pack://application:,,,/Assets/photo5.png");
-            teio.FeaturedPhotos.Add("pack://application:,,,/Assets/photo6.png");
-
+            teio.FeaturedPhotos.Add("/Assets/wpfui-icon-1024.png");
+            teio.FeaturedPhotos.Add("/Assets/wpfui-icon-1024.png");
+            teio.FeaturedPhotos.Add("/Assets/wpfui-icon-1024.png");
+            teio.FeaturedPhotos.Add("/Assets/wpfui-icon-1024.png");
+            teio.FeaturedPhotos.Add("/Assets/wpfui-icon-1024.png");
+ 
             var kun = new Contact
             {
                 Name = "【英俊潇洒-坤...",

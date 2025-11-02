@@ -21,7 +21,8 @@
                     Padding="0" Margin="0" >
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" 
+                                Padding="{TemplateBinding Padding}">
                             <ContentPresenter/>
                         </Border>
                     </ControlTemplate>
@@ -85,17 +86,20 @@
                             <ContentPresenter Grid.Row="1" x:Name="Content" Visibility="Collapsed" Margin="15,0,0,0"/>
                         </Grid>
                         <ControlTemplate.Triggers>
+                            <!-- 保持 IsExpanded 触发器不变 -->
                             <Trigger Property="IsExpanded" Value="True">
                                 <Setter TargetName="Arrow" Property="Text" Value="▼"/>
                                 <Setter TargetName="Content" Property="Visibility" Value="Visible"/>
                             </Trigger>
-                            <Trigger Property="IsMouseOver" SourceName="HeaderToggleButton" Value="True">
-                                <Setter Property="Background" TargetName="HeaderToggleButton" Value="#444444"/>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <!-- 当鼠标悬停在 Expander (的头部) 上时，改变背景色 -->
+                                <Setter Property="Background" Value="#444444"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
     </Page.Resources>
 
@@ -110,17 +114,23 @@
                   Background="Transparent" BorderThickness="0"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ui:ListView.ItemContainerStyle>
-                <Style TargetType="ListViewItem">
+                <Style TargetType="ui:ListViewItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="Padding" Value="0"/>
                     <Setter Property="Margin" Value="0"/>
+                    <Setter Property="Background" Value="Transparent"/>
                     <Setter Property="Template">
                         <Setter.Value>
-                            <ControlTemplate TargetType="ListViewItem">
-                                <ContentPresenter/>
+                            <ControlTemplate TargetType="ui:ListViewItem">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                    <ContentPresenter/>
+                                </Border>
                             </ControlTemplate>
                         </Setter.Value>
                     </Setter>
+
                 </Style>
             </ui:ListView.ItemContainerStyle>
             <ui:ListView.ItemTemplate>
@@ -136,14 +146,16 @@
 
         <!-- 右侧详细信息面板 -->
         <Grid Grid.Column="1" Background="#3F3F3F">
-            <TextBlock Text="{Binding ViewModel.SelectedItemName}"
+            <!--<TextBlock Text="{Binding ViewModel.SelectedItemName}"
                        FontSize="24"
                        FontWeight="Bold"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
-                        <!-- 默认情况下，我们让它可见，这样更容易调试 -->
+                        -->
+            <!-- 默认情况下，我们让它可见，这样更容易调试 -->
+            <!--
                         <Setter Property="Visibility" Value="Visible"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding ViewModel.SelectedItemName}" Value="{x:Null}">
@@ -152,7 +164,139 @@
                         </Style.Triggers>
                     </Style>
                 </TextBlock.Style>
-            </TextBlock>
+            </TextBlock>-->
+            <!-- 完整的右侧详细信息视图 (ScrollViewer 版本) -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ViewModel.SelectedContact}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+
+                <StackPanel DataContext="{Binding ViewModel.SelectedContact}" Margin="30">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Ellipse Grid.Column="0" Width="80" Height="80">
+                                <Ellipse.Fill>
+                                    <ImageBrush ImageSource="{Binding AvatarUrl, TargetNullValue={StaticResource DefaultAvatar}}"/>
+                                </Ellipse.Fill>
+                            </Ellipse>
+                            <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Name}" FontSize="24" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding QqNumber}" Foreground="Gray" Margin="0,5,0,0"/>
+                                <TextBlock Text="{Binding Status}" Foreground="Gray" Margin="0,5,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" VerticalAlignment="Top" HorizontalAlignment="Right">
+                                <ui:SymbolIcon Symbol="ThumbLike24" FontSize="20"/>
+                                <TextBlock Text="{Binding LikesCount}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 个人信息行 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0" TextElement.Foreground="Gray">
+                            <ui:SymbolIcon Symbol="AppGeneric24" Foreground="#6495ED"/>
+                            <TextBlock Text="{Binding Gender}" Margin="5,0,15,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Age, StringFormat={}{0}岁}" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding BirthDate}" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ZodiacSign}" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- 阳光/月亮/星星 -->
+                        <StackPanel Orientation="Horizontal" Margin="0,15,0,20">
+                            <ui:SymbolIcon Symbol="WeatherSunny24" Foreground="Orange"/>
+                            <ui:SymbolIcon Symbol="WeatherSunny24" Foreground="Orange"/>
+                            <ui:SymbolIcon Symbol="WeatherMoon24" Foreground="Silver"/>
+                            <ui:SymbolIcon Symbol="WeatherMoon24" Foreground="Silver"/>
+                            <ui:SymbolIcon Symbol="Star24" Foreground="Gold"/>
+                        </StackPanel>
+
+                        <Separator/>
+
+                        <!-- 详细信息Grid (修正了重叠问题) -->
+                        <Grid Margin="0,20,0,0" TextElement.Foreground="Gray">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Row 0: 备注 -->
+                            <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <ui:SymbolIcon Symbol="Edit24"/>
+                                <TextBlock Text="备注" Margin="5,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Remark}" Foreground="White" Margin="20,0,0,0" VerticalAlignment="Center"/>
+
+                            <!-- Row 1: 好友分组 -->
+                            <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,15,0,0">
+                                <ui:SymbolIcon Symbol="Group24"/>
+                                <TextBlock Text="好友分组" Margin="5,0,0,0"/>
+                            </StackPanel>
+                            <ComboBox Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Right" SelectedItem="{Binding GroupName}" Margin="20,10,0,0" Width="150"/>
+
+                            <!-- Row 2: 签名 -->
+                            <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,15,0,0">
+                                <ui:SymbolIcon Symbol="Pen24"/>
+                                <TextBlock Text="签名" Margin="5,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Signature}" Foreground="White" Margin="20,15,0,0" VerticalAlignment="Center"/>
+
+                            <!-- Row 3: QQ空间 -->
+                            <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,15,0,0">
+                                <ui:SymbolIcon Symbol="Globe24"/>
+                                <TextBlock Text="QQ空间" Margin="5,0,0,0"/>
+                            </StackPanel>
+                            <ui:SymbolIcon Grid.Row="3" Grid.Column="1" Symbol="ChevronRight24" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,15,0,0"/>
+
+                            <!-- Row 4: 精选照片 -->
+                            <StackPanel Grid.Row="4" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,15,0,0">
+                                <ui:SymbolIcon Symbol="Apps24"/>
+                                <TextBlock Text="精选照片" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 照片墙 -->
+                        <ItemsControl ItemsSource="{Binding FeaturedPhotos}" Margin="0,10,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" Columns="6"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="5" Margin="3">
+                                        <Image Source="{Binding}" Stretch="UniformToFill"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- 底部按钮 -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,30,0,0">
+                            <Button Content="分享"/>
+                            <Button Content="音视频通话" Margin="10,0"/>
+                            <Button Content="发消息" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
         </Grid>
     </Grid>
 </Page>
