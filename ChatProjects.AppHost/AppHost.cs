@@ -16,10 +16,10 @@ var chatHistoryDb = mongoServer.AddDatabase("chathistorydb");
 
 var userService = builder.AddProject<Projects.ChatProjects_UserService>("userservice")
     .WithReference(userDb);
-var authService = builder.AddProject<Projects.AuthService>("authservice")
+var authService = builder.AddProject<Projects.ChatProjects_AuthService>("authservice")
     .WithReference(userDb);
 
-builder.AddProject<Projects.GatewayService>("gatewayservice")
+builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
     .WithReference(authService)
     .WithReference(userService);
 

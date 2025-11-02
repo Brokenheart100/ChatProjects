@@ -11,11 +11,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AuthService\AuthService.csproj" />
+    <ProjectReference Include="..\AuthService\ChatProjects.AuthService.csproj" />
     <ProjectReference Include="..\ChatProjects.ApiService\ChatProjects.ApiService.csproj" />
     <ProjectReference Include="..\ChatProjects.UserService\ChatProjects.UserService.csproj" />
     <ProjectReference Include="..\ChatProjects.Web\ChatProjects.Web.csproj" />
-    <ProjectReference Include="..\GatewayService\GatewayService.csproj" />
+    <ProjectReference Include="..\GatewayService\ChatProjects.GatewayService.csproj" />
   </ItemGroup>
 
   <ItemGroup>

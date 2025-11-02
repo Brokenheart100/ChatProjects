@@ -17,9 +17,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BKFluentChat", "BKFluentCha
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaTest", "AvaloniaTest\AvaloniaTest.csproj", "{D0AB9E71-66D1-42BC-8FD1-7FFF8BDEB6A3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GatewayService", "GatewayService\GatewayService.csproj", "{DEBAE0F8-8662-4060-868F-8369EC49AB99}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatProjects.GatewayService", "GatewayService\ChatProjects.GatewayService.csproj", "{DEBAE0F8-8662-4060-868F-8369EC49AB99}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuthService", "AuthService\AuthService.csproj", "{05187C7C-C331-4C1C-A16C-EA117E4A43AE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatProjects.AuthService", "AuthService\ChatProjects.AuthService.csproj", "{05187C7C-C331-4C1C-A16C-EA117E4A43AE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatProjects.UserService", "ChatProjects.UserService\ChatProjects.UserService.csproj", "{70D70A55-EAEB-4A23-97C0-A9579D69088D}"
 EndProject
