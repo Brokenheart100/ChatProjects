@@ -1,0 +1,548 @@
+﻿<Page x:Class="BKFluentChat.Views.Pages.ContactsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:BKFluentChat.Views.Pages"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml" 
+      xmlns:pages="clr-namespace:BKFluentChat.ViewModels.Pages"
+      xmlns:models="clr-namespace:BKFluentChat.Models"
+      d:DataContext="{d:DesignInstance Type=local:ContactsPage}"
+      mc:Ignorable="d" 
+      d:DesignHeight="950" d:DesignWidth="800"
+      Title="ContactsPage">
+
+    <Page.Resources>
+        <!-- 简单的列表项样式 -->
+        <Style x:Key="StaticListItemStyle" TargetType="Border">
+            <Setter Property="Padding" Value="20,15"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#3A3A3A"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+
+        <DataTemplate x:Key="ContactItemTemplate" DataType="{x:Type models:Contact}">
+            <Button Command="{Binding}"
+                    CommandParameter="{Binding}"
+                    HorizontalContentAlignment="Stretch" Padding="0" BorderThickness="0" Background="Transparent">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+                <Grid Margin="12,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Ellipse Grid.Column="0" Width="40" Height="40" VerticalAlignment="Center">
+                        <Ellipse.Fill>
+                            <ImageBrush ImageSource="{Binding AvatarUrl, TargetNullValue={StaticResource DefaultAvatar}}"/>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Remark}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Status}" Foreground="Gray" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Grid>
+            </Button>
+        </DataTemplate>
+
+
+        <Style x:Key="ContactGroupExpanderStyle" TargetType="Expander">
+            <!-- 设置Expander内部文本的默认前景色 -->
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <!-- 核心部分：用一个完全自定义的 ControlTemplate 替换掉 Expander 的默认外观 -->
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <!-- 第一行：用于放置可点击的头部 -->
+                                <RowDefinition Height="Auto"/>
+                                <!-- 第二行：用于放置可折叠的内容 -->
+                            </Grid.RowDefinitions>
+
+                            <!-- 
+                            头部区域：
+                            我们使用一个 Border 来方便地处理背景色变化和点击。
+                            x:Name="HeaderBorder" 是为了让下面的触发器(Trigger)可以找到并修改它。
+                        -->
+                            <Border x:Name="HeaderBorder" Grid.Row="0" Padding="12,10" Background="Transparent" Cursor="Hand">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <!-- 左侧：箭头图标 -->
+                                        <ColumnDefinition Width="*"/>
+                                        <!-- 中间：分组名称 (自动填充) -->
+                                        <ColumnDefinition Width="Auto"/>
+                                        <!-- 右侧：在线/总数 -->
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 
+                                    箭头图标：
+                                    x:Name="Arrow" 以便触发器可以旋转它。
+                                    RenderTransformOrigin="0.5,0.5" 确保它围绕中心点旋转。
+                                -->
+                                    <ui:SymbolIcon Grid.Column="0" Symbol="ChevronRight24" x:Name="Arrow" RenderTransformOrigin="0.5,0.5">
+                                        <ui:SymbolIcon.RenderTransform>
+                                            <RotateTransform Angle="0"/>
+                                        </ui:SymbolIcon.RenderTransform>
+                                    </ui:SymbolIcon>
+
+                                    <!-- 分组名称：绑定到 ContactGroup 模型的 Name 属性 -->
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+
+                                    <!-- 计数器：绑定到 ContactGroup 模型的 Counter 属性 -->
+                                    <TextBlock Grid.Column="2" Text="{Binding Counter}" Foreground="Gray" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- 
+                            内容区域：
+                            ContentPresenter 是一个占位符，Expander 的实际内容（在这里是联系人列表）会被自动放入这里。
+                            x:Name="Content" 以便触发器可以控制它的可见性。
+                            默认情况下，内容是折叠的 (Visibility="Collapsed")。
+                        -->
+                            <ContentPresenter Grid.Row="1" x:Name="Content" Visibility="Collapsed"/>
+                        </Grid>
+
+                        <!-- 
+                        触发器：为控件添加动态行为 
+                    -->
+                        <ControlTemplate.Triggers>
+                            <!-- 触发器1：当鼠标悬停在头部区域时 -->
+                            <Trigger Property="IsMouseOver" SourceName="HeaderBorder" Value="True">
+                                <!-- 动作：将头部的背景色变深，以提供视觉反馈 -->
+                                <Setter Property="Background" TargetName="HeaderBorder" Value="#3A3A3A"/>
+                            </Trigger>
+
+                            <!-- 触发器2：当 Expander 本身被展开时 (IsExpanded 变为 True) -->
+                            <Trigger Property="IsExpanded" Value="True">
+                                <!-- 动作1：旋转箭头图标90度 -->
+                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="90"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <!-- 动作2：将内容区域变为可见 -->
+                                <Setter TargetName="Content" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ContactGroupExpanderStyle1" TargetType="Expander">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- 
+                        ===========================================================
+                        ==                      核心修改点                      ==
+                        ===========================================================
+                        我们将之前的 <Border> 替换为 <ToggleButton>。
+                        ToggleButton 天生就具有点击切换状态的功能。
+                    -->
+                            <ToggleButton x:Name="HeaderToggleButton" Grid.Row="0"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Cursor="Hand"
+
+                                IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+
+                                <!-- 为了让 ToggleButton 看起来和 Border 一样，我们自定义它的内容 -->
+                                <ToggleButton.Content>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <ui:SymbolIcon Grid.Column="0" Symbol="ChevronRight24" x:Name="Arrow" RenderTransformOrigin="0.5,0.5">
+                                            <ui:SymbolIcon.RenderTransform>
+                                                <RotateTransform Angle="0"/>
+                                            </ui:SymbolIcon.RenderTransform>
+                                        </ui:SymbolIcon>
+
+                                        <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Counter}" Foreground="Gray" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </ToggleButton.Content>
+
+                                <!-- 我们还需要为 ToggleButton 设置一个简单的样式，让它在不同状态下看起来像 Border -->
+                                <ToggleButton.Style>
+                                    <Style TargetType="ToggleButton">
+                                        <Setter Property="Padding" Value="12,10"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ToggleButton.Style>
+                            </ToggleButton>
+
+                            <ContentPresenter Grid.Row="1" x:Name="Content" Visibility="Collapsed"/>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <!-- 触发器现在监控 ToggleButton 的 IsMouseOver 状态 -->
+                            <Trigger Property="IsMouseOver" SourceName="HeaderToggleButton" Value="True">
+                                <Setter Property="Background" TargetName="HeaderToggleButton" Value="#3A3A3A"/>
+                            </Trigger>
+
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="90"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="Content" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 联系人分组的Expander样式 -->
+        <Style TargetType="Expander">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border x:Name="HeaderBorder" Padding="12,10" Background="Transparent" Cursor="Hand">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ui:SymbolIcon Grid.Column="0" Symbol="ChevronRight24" x:Name="Arrow" RenderTransformOrigin="0.5,0.5">
+                                        <ui:SymbolIcon.RenderTransform>
+                                            <RotateTransform Angle="0"/>
+                                        </ui:SymbolIcon.RenderTransform>
+                                    </ui:SymbolIcon>
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Counter}" Foreground="Gray" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <ContentPresenter Grid.Row="1" x:Name="Content" Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" SourceName="HeaderBorder" Value="True">
+                                <Setter Property="Background" TargetName="HeaderBorder" Value="#3A3A3A"/>
+                            </Trigger>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="90"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="Content" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <!-- 左侧联系人列表 -->
+            <ColumnDefinition Width="Auto"/>
+            <!-- 分割线 -->
+            <ColumnDefinition Width="*"/>
+            <!-- 右侧内容 -->
+        </Grid.ColumnDefinitions>
+
+        <!-- 左侧面板 -->
+        <Border Grid.Column="0" Background="#333333">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- 搜索和添加 -->
+                    <Grid Margin="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox Grid.Column="0" PlaceholderText="搜索"/>
+                        <ui:Button Grid.Column="1" Padding="8" Margin="5,0,0,0" FontSize="16" Content="+"/>
+                    </Grid>
+
+                    <!-- 好友管理器 -->
+                    <Border Margin="10" Padding="10" BorderBrush="Gray" BorderThickness="1" CornerRadius="5" Background="Transparent" Cursor="Hand">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <ui:SymbolIcon Symbol="Person24" Margin="0,0,8,0"/>
+                            <ui:TextBlock Text="好友管理器" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 好友通知 / 群通知 -->
+                    <Border Style="{StaticResource StaticListItemStyle}">
+                        <TextBlock Text="好友通知"/>
+                    </Border>
+                    <Border Style="{StaticResource StaticListItemStyle}">
+                        <TextBlock Text="群通知"/>
+                    </Border>
+
+                    <!-- 分隔符 -->
+                    <Separator Margin="10,5"/>
+
+
+                    <!--<ui:ListView ItemsSource="{Binding ViewModel.ContactGroups}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     d:ItemsSource="{d:SampleData ItemCount=2}"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     SelectionMode="Single">
+                        <ui:ListView.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:ContactGroup}">
+                                <Grid Margin="8,0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse
+                                            x:Name="Ellipse"
+                                            Grid.RowSpan="2"
+                                            Width="32"
+                                            Height="32"
+                                            Margin="6"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Fill="{ui:ThemeResource ControlStrongStrokeColorDefaultBrush}" />
+                                    <TextBlock
+                                            Grid.Row="0"
+                                            Grid.Column="1"
+                                            Margin="12,6,0,0"
+                                            FontWeight="Bold"
+                                            Text="{Binding Name, Mode=OneWay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ui:ListView.ItemTemplate>
+                    </ui:ListView>-->
+
+                    <ItemsControl ItemsSource="{Binding ViewModel.ContactGroups}"
+                                                 d:ItemsSource="{d:SampleData ItemCount=2}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:ContactGroup}">
+                                <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
+                                    <ui:ListView ItemsSource="{Binding Contacts}"
+                                                 Background="Transparent"
+                                                 BorderThickness="0"
+                                                 d:ItemsSource="{d:SampleData ItemCount=2}"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                 SelectionMode="Single">
+                                        <ui:ListView.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:Contact}">
+                                                <Grid Margin="8,0">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="*" />
+                                                        <RowDefinition Height="*" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Ellipse
+                                                        x:Name="Ellipse"
+                                                        Grid.RowSpan="2"
+                                                        Width="32"
+                                                        Height="32"
+                                                        Margin="6"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Fill="{ui:ThemeResource ControlStrongStrokeColorDefaultBrush}" />
+                                                    <TextBlock
+                                                        Grid.Row="0"
+                                                        Grid.Column="1"
+                                                        Margin="12,6,0,0"
+                                                        FontWeight="Bold"
+                                                        Text="{Binding Name, Mode=OneWay}" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ui:ListView.ItemTemplate>
+                                    </ui:ListView>
+                                </Expander>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- 分割线 -->
+        <GridSplitter Grid.Column="1" Width="1" Background="#FF4A4A4A" HorizontalAlignment="Stretch" />
+
+        <!-- 右侧占位符 -->
+        <Grid Grid.Column="2" Background="#3F3F3F">
+            <!-- 企鹅图标的路径数据 -->
+            <Path Data="M128 20.48C110.08 20.48 95.232 35.328 95.232 53.248S110.08 86.016 128 86.016S160.768 71.168 160.768 53.248S145.92 20.48 128 20.48ZM199.68 51.2C188.416 51.2 179.2 60.416 179.2 71.68V107.52C179.2 110.208 176.928 112.64 174.08 112.64H163.84V143.36C163.84 153.6 155.648 161.28 145.408 161.28H110.592C100.352 161.28 92.16 153.6 92.16 143.36V112.64H81.92C79.072 112.64 76.8 110.208 76.8 107.52V71.68C76.8 60.416 67.584 51.2 56.32 51.2H46.08C34.816 51.2 25.6 60.416 25.6 71.68V184.32C25.6 195.584 34.816 204.8 46.08 204.8H56.32C67.584 204.8 76.8 195.584 76.8 184.32V174.08H179.2V184.32C179.2 195.584 188.416 204.8 199.68 204.8H209.92C221.184 204.8 230.4 195.584 230.4 184.32V71.68C230.4 60.416 221.184 51.2 209.92 51.2H199.68Z" 
+                  Fill="#555555" 
+                  Width="100" 
+                  Height="100"
+                  Stretch="Uniform" 
+                  Visibility="Collapsed"
+                  HorizontalAlignment="Center" 
+                  VerticalAlignment="Center"/>
+
+            <!-- 完整的右侧详细信息面板 StackPanel 内容 -->
+            <StackPanel DataContext="{Binding ViewModel.SelectedContact}" Margin="30">
+                <!-- 顶部信息 -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Ellipse Grid.Column="0" Width="80" Height="80">
+                        <Ellipse.Fill>
+                            <ImageBrush ImageSource="{Binding AvatarUrl, TargetNullValue={StaticResource DefaultAvatar}}"/>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" FontSize="24" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding QqNumber}" Foreground="Gray" Margin="0,5,0,0"/>
+                        <TextBlock Text="{Binding Status}" Foreground="Gray" Margin="0,5,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Top" HorizontalAlignment="Right">
+                        <ui:SymbolIcon Symbol="ThumbLike24" FontSize="20"/>
+                        <TextBlock Text="{Binding LikesCount}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 个人信息行 -->
+                <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                    <ui:SymbolIcon Symbol="DataHistogram24" Foreground="#6495ED"/>
+                    <TextBlock Text="{Binding Gender}" Margin="5,0,15,0"/>
+                    <TextBlock Text="{Binding Age, StringFormat={}{0}岁}" Margin="0,0,15,0"/>
+                    <TextBlock Text="{Binding BirthDate}" Margin="0,0,15,0"/>
+                    <TextBlock Text="{Binding ZodiacSign}"/>
+                </StackPanel>
+
+                <!-- 阳光/月亮/星星 -->
+                <StackPanel Orientation="Horizontal" Margin="0,15,0,20">
+                    <ui:SymbolIcon Symbol="WeatherSunny24" Foreground="Orange"/>
+                    <ui:SymbolIcon Symbol="WeatherMoon24" Foreground="Silver"/>
+                    <ui:SymbolIcon Symbol="WeatherMoon24" Foreground="Silver"/>
+                    <ui:SymbolIcon Symbol="Star24" Foreground="Gold"/>
+                    <ui:SymbolIcon Symbol="Star24" Foreground="Gold"/>
+                </StackPanel>
+
+                <!-- 分割线 -->
+                <Separator/>
+
+                <!-- 详细信息Grid -->
+                <!-- 详细信息Grid (修正了重叠问题) -->
+                <Grid Margin="0,20,0,0" TextElement.Foreground="Gray">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- 左侧：标签 (图标 + 文字) -->
+                        <ColumnDefinition Width="*"/>
+                        <!-- 右侧：内容 -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Row 0: 备注 -->
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon Symbol="Edit24"/>
+                        <TextBlock Text="备注" Margin="5,0,0,0"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Remark}" Foreground="White" Margin="20,0,0,0" VerticalAlignment="Center"/>
+
+                    <!-- Row 1: 好友分组 -->
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,15,0,0">
+                        <ui:SymbolIcon Symbol="Group24"/>
+                        <TextBlock Text="好友分组" Margin="5,0,0,0"/>
+                    </StackPanel>
+                    <ComboBox Grid.Row="1" Grid.Column="1" SelectedItem="{Binding GroupName}" Margin="20,10,0,0" Width="150" HorizontalAlignment="Left"/>
+
+                    <!-- Row 2: 签名 -->
+                    <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,15,0,0">
+                        <ui:SymbolIcon Symbol="Pen24"/>
+                        <TextBlock Text="签名" Margin="5,0,0,0"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Signature}" Foreground="White" Margin="20,15,0,0" VerticalAlignment="Center"/>
+
+                    <!-- Row 3: QQ空间 -->
+                    <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,15,0,0">
+                        <ui:SymbolIcon Symbol="Globe24"/>
+                        <TextBlock Text="QQ空间" Margin="5,0,0,0"/>
+                    </StackPanel>
+                    <ui:SymbolIcon Grid.Row="3" Grid.Column="1" Symbol="ChevronRight24" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,15,0,0"/>
+
+                    <!-- Row 4: 精选照片 -->
+                    <StackPanel Grid.Row="4" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,15,0,0">
+                        <ui:SymbolIcon Symbol="Apps24"/>
+                        <TextBlock Text="精选照片" Margin="5,0,0,0"/>
+                    </StackPanel>
+                    <!-- 精选照片的内容（照片墙）在Grid外部，所以这里右侧为空 -->
+                </Grid>
+
+                <!-- 照片墙 -->
+                <ItemsControl ItemsSource="{Binding FeaturedPhotos}" Margin="0,10,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" Columns="6"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="5" Margin="3">
+                                <Image Source="{Binding}" Stretch="UniformToFill"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 底部按钮 -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,30,0,0">
+                    <Button Content="分享"/>
+                    <Button Content="音视频通话" Margin="10,0"/>
+                    <Button Content="发消息"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>

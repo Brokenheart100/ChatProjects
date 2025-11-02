@@ -1,0 +1,21 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style Selector="TextBlock.fa">
+        <!-- 
+          核心修正:
+          1. 确保 URI 路径与您项目中的文件路径完全一致。
+             (注意：我根据您的错误信息更新了路径，请再次核对)
+          2. 将 # 后面的字体族名更新为 Font Awesome 7 的正确名称。
+             对于 Solid 字体，通常就是 "Font Awesome 7 Free"。
+        -->
+        <Setter Property="FontFamily" 
+                Value="avares://BKChat/Assets/Fonts/fontawesome-free-7.1.0-desktop/otfs/Font Awesome 7 Free-Solid-900.otf#Font Awesome 7 Free" />
+
+        <!-- 
+          对于 Solid 字体，我们还需要指定正确的字重 (FontWeight)。
+          Font Awesome 7 将 Solid 样式定义为 900 的字重。
+        -->
+        <Setter Property="FontWeight" Value="Black" />
+    </Style>
+  <!-- Add Styles Here -->
+</Styles>

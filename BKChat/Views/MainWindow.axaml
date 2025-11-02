@@ -1,0 +1,39 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BKChat.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:avalonia="http://reactiveui.net"
+        xmlns:bkChat="clr-namespace:BKChat"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="BKChat.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="BKChat">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <!-- 恢复完整的 Grid 布局 -->
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="Auto,*">
+
+        <!-- Topbar -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#f5f5f5" BorderBrush="#e0e0e0" BorderThickness="0 0 0 1" Padding="10,5">
+            <TextBlock Text="BKChat" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
+        </Border>
+
+        <!-- Leftbar (带导航按钮) -->
+        <StackPanel Grid.Row="1" Grid.Column="0" Background="#eeeeee" Spacing="10" Margin="5">
+            <Button Command="{Binding GoChat}" Content="&#xE712;" FontFamily="Segoe MDL2 Assets" FontSize="20" ToolTip.Tip="聊天"/>
+            <Button Command="{Binding GoContacts}" Content="&#xE716;" FontFamily="Segoe MDL2 Assets" FontSize="20" ToolTip.Tip="联系人"/>
+        </StackPanel>
+
+        <!-- Main Content Area: 使用 RoutedViewHost -->
+        <avalonia:RoutedViewHost Grid.Row="1" Grid.Column="1" Router="{Binding Router}" />
+
+    </Grid>
+
+</Window>

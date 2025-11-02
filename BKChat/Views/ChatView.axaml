@@ -1,0 +1,88 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:bkChat="clr-namespace:BKChat"
+             xmlns:vm="using:BKChat.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:DataType="vm:ChatViewModel"
+             x:Class="BKChat.ChatView">
+  
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:ChatViewModel/>
+    </Design.DataContext>
+
+      <Grid ColumnDefinitions="250, *">
+        
+        <!-- 左侧会话列表 -->
+        <!-- 核心改动 1: 添加 SelectedItem 绑定 -->
+        <ListBox Grid.Column="0" 
+                 ItemsSource="{Binding Conversations}" 
+                 SelectedItem="{Binding SelectedConversation, Mode=TwoWay}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" Margin="5">
+                        <!-- 头像 -->
+                        <Ellipse Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" Width="40" Height="40" Margin="0,0,10,0">
+                            <Ellipse.Fill>
+                                <ImageBrush Source="/Assets/avalonia-logo.ico"/>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <!-- 名字和时间 -->
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Timestamp}" FontSize="12" Foreground="Gray" HorizontalAlignment="Right"/>
+                        <!-- 最后一条消息 -->
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LastMessage}" FontSize="12" Foreground="Gray"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- 分割线 -->
+        <GridSplitter Grid.Column="1" Width="1" Background="{DynamicResource ThemeBorderLowBrush}" HorizontalAlignment="Left" />
+
+        <!-- 右侧聊天内容 -->
+        <!-- 核心改动 2: 将整个右侧Grid的DataContext绑定到SelectedConversation -->
+        <Grid Grid.Column="1" RowDefinitions="Auto, *, Auto" 
+              DataContext="{Binding SelectedConversation}"
+             >
+
+            <Grid.IsVisible>
+                <Binding Converter="{StaticResource ObjectToBoolConverter}" />
+            </Grid.IsVisible>
+            <!-- 聊天窗口顶部 - 会话标题 -->
+            <!-- 这里的绑定现在是相对于 Conversation 对象的 -->
+            <Border Grid.Row="0" Padding="10" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="0 0 0 1">
+                <TextBlock Text="{Binding ChatTitle}" FontSize="16" FontWeight="Bold"/>
+            </Border>
+    
+            <!-- 聊天消息列表 -->
+            <!-- 这里的绑定也是相对于 Conversation 对象的 -->
+            <ScrollViewer Grid.Row="1">
+                <ItemsControl ItemsSource="{Binding Messages}" Margin="10">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{Binding IsSentByMe, Converter={StaticResource BoolToBrushConverter}}" 
+                                    CornerRadius="8" Padding="10" 
+                                    HorizontalAlignment="{Binding Alignment}"
+                                    Margin="{Binding Margin}">
+                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+    
+            <!-- 消息输入区域 -->
+            <Border Grid.Row="2" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="0 1 0 0" Padding="5">
+                <DockPanel>
+                    <Button Content="发送" DockPanel.Dock="Right" Margin="5,0,0,0"/>
+                    <TextBox Watermark="输入消息..." VerticalAlignment="Stretch"/>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

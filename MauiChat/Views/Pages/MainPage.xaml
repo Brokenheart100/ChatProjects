@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MauiChat.MainPage">
+
+    <!-- 主布局网格：分为左右两列 -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <!-- LeftBar: 固定宽度60 -->
+            <ColumnDefinition Width="60" />
+            <!-- 主内容区: 占据剩余空间 -->
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ========================== -->
+        <!--        1. LeftBar          -->
+        <!-- ========================== -->
+        <Border Grid.Column="0"
+                BackgroundColor="#FF2C2C2C"
+                StrokeThickness="0"
+                Padding="0, 20">
+            <VerticalStackLayout Spacing="25"
+                                 HorizontalOptions="Center">
+                <!-- 这里用简单的 Label 作为导航按钮图标的占位符 -->
+                <!-- 在实际项目中，可以使用 ImageButton 或 FontIcon -->
+                <Label Text="💬" FontSize="24" HorizontalOptions="Center" TextColor="White"/>
+                <Label Text="👥" FontSize="24" HorizontalOptions="Center" TextColor="Gray"/>
+                <Label Text="⭐" FontSize="24" HorizontalOptions="Center" TextColor="Gray"/>
+                <Label Text="📂" FontSize="24" HorizontalOptions="Center" TextColor="Gray"/>
+
+                <!-- 底部对齐的设置按钮 -->
+                <Label Text="⚙️" FontSize="24" HorizontalOptions="Center" TextColor="Gray" VerticalOptions="EndAndExpand"/>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- ========================== -->
+        <!--    2. 右侧主内容区域       -->
+        <!-- ========================== -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <!-- TopBar: 固定高度50 -->
+                <RowDefinition Height="50" />
+                <!-- Page Content: 占据剩余空间 -->
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- 2.1 TopBar -->
+            <Border Grid.Row="0"
+                    BackgroundColor="#FFF0F0F0"
+                    StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RectangleGeometry Rect="0,0,200,50"/>
+                </Border.StrokeShape>
+                <HorizontalStackLayout VerticalOptions="Center"
+                                       Spacing="10"
+                                       Padding="15, 0">
+                    <!-- 用户头像 (用圆形 Border 包裹) -->
+                    <Border StrokeThickness="0"
+                            HeightRequest="36"
+                            WidthRequest="36"
+                            StrokeShape="RoundRectangle 18,18,18,18">
+                        <!-- 在实际项目中，这里会绑定一个 ImageSource -->
+                        <Image Aspect="AspectFill"
+                               Source="https://learn.microsoft.com/en-us/dotnet/maui/user-interface/controls/mediaelement-images/error-indicator-light.png" />
+                    </Border>
+                    <!-- 用户名 -->
+                    <Label Text="水果批发麦哥"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           VerticalOptions="Center"
+                           TextColor="#FF1F1F1F"/>
+                </HorizontalStackLayout>
+            </Border>
+
+            <!-- 2.2 Page (内容页占位符) -->
+            <Border Grid.Row="1"
+                    BackgroundColor="#FFF8F8F8"
+                    StrokeThickness="0"
+                    Padding="20">
+                <Label Text="这里是主内容页面 (Page Area)"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center"
+                       FontSize="22"
+                       TextColor="Gray"/>
+            </Border>
+        </Grid>
+    </Grid>
+
+</ContentPage>

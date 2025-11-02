@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AvaloniaTest.ViewModels"
+        xmlns:models="using:AvaloniaTest.Models"
+        x:Class="AvaloniaTest.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="AvaloniaTest"
+        Width="300" Height="600">
+
+    <!-- 
+      将所有数据模板定义在 Window.DataTemplates 中。
+      这是 Avalonia 中为窗口及其子控件定义模板的标准方式。
+    -->
+    <Window.DataTemplates>
+        <!-- 模板 A: 用于渲染 Group (父节点) -->
+      
+        <!-- 模板 B: 用于渲染 Contact (叶子节点) -->
+        <DataTemplate DataType="models:Contact">
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5">
+                <Ellipse Width="40" Height="40">
+                    <Ellipse.Fill>
+                        <ImageBrush Source="{Binding Avatar}" Stretch="UniformToFill"/>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                    <TextBlock Text="{Binding Name}"/>
+                    <TextBlock Text="{Binding Status}" Foreground="Gray" FontSize="12"/>
+                </StackPanel>
+            </StackPanel>
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <!-- 
+      TreeView 的定义变得非常简洁。
+      它会自动去 Window.DataTemplates 中查找适合的模板。
+    -->
+    <TreeView ItemsSource="{Binding Groups}" Margin="10"/>
+
+</Window>

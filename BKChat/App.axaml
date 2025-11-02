@@ -1,0 +1,20 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:BKChat"
+             xmlns:converters="using:BKChat.Converters"
+             x:Class="BKChat.App"
+             RequestedThemeVariant="Light">
+ 
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://BKChat/Styles/Icons.axaml"/>
+    </Application.Styles>
+
+    <Application.Resources>
+        <!-- 转换器在这里注册是完全正确的 -->
+        <converters:BoolToBrushConverter x:Key="BoolToBrushConverter" />
+        <converters:ObjectToBoolConverter x:Key="ObjectToBoolConverter" />
+    </Application.Resources>
+    
+</Application>

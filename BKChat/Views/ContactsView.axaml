@@ -1,0 +1,89 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BKChat.ViewModels"
+             xmlns:models="using:BKChat.Models"
+             xmlns:global="clr-namespace:"
+             x:Class="BKChat.Views.ContactsView"
+             x:DataType="global:ContactsViewModel">
+
+    <!-- 
+      第一部分：数据模板定义
+      我们将所有模板定义在UserControl的顶层。
+      这是 Avalonia 的标准、惯用做法。
+    -->
+    <UserControl.DataTemplates>
+        
+        <!-- 模板A: 用于渲染 "Contact" 对象 (叶子节点) -->
+        <DataTemplate DataType="models:Contact">
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,5">
+                <Ellipse Width="40" Height="40">
+                    <Ellipse.Fill>
+                        <ImageBrush Source="{Binding AvatarUrl}" Stretch="UniformToFill"/>
+                    </Ellipse.Fill>
+                </Ellipse>
+                <StackPanel VerticalAlignment="Center" Spacing="3">
+                    <TextBlock Text="{Binding Remark}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <TextBlock Text="{Binding StatusIcon}" Classes="fa" Foreground="{Binding StatusColor}" FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StatusText}" Foreground="Gray" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </DataTemplate>
+        
+        <!-- 模板B: 用于渲染 "ContactGroup" 对象 (父节点) -->
+        <TreeDataTemplate DataType="models:ContactGroup"
+                                  ItemsSource="{Binding Contacts}">
+            <DockPanel Margin="0,5">
+                <TextBlock Text="{Binding DisplayCount}" DockPanel.Dock="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </DockPanel>
+        </TreeDataTemplate>
+
+    </UserControl.DataTemplates>
+
+
+    <!-- 第二部分：主布局 -->
+    <Grid ColumnDefinitions="280, *">
+
+        <!-- ========================== -->
+        <!--  左侧：好友列表面板        -->
+        <!-- ========================== -->
+        <DockPanel Grid.Column="0" Background="{DynamicResource ThemeControlLowBrush}">
+            
+            <Border DockPanel.Dock="Top" Padding="10" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Watermark="搜索" />
+                    <Button Grid.Column="1" Content="+" Margin="5,0,0,0"/>
+                </Grid>
+            </Border>
+            
+            <ScrollViewer>
+                <StackPanel Spacing="10" Margin="10">
+                    <Button Content="好友管理器" HorizontalContentAlignment="Left" Theme="{StaticResource ButtonRevealTheme}"/>
+                    <Separator/>
+                    <Button Content="好友通知" HorizontalContentAlignment="Left" Theme="{StaticResource ButtonRevealTheme}"/>
+                    <Button Content="群通知" HorizontalContentAlignment="Left" Theme="{StaticResource ButtonRevealTheme}"/>
+                    <Grid ColumnDefinitions="*,*" Margin="0,10">
+                        <Button Content="好友" Classes="accent"/>
+                        <Button Grid.Column="1" Content="群聊" Theme="{StaticResource ButtonRevealTheme}"/>
+                    </Grid>
+
+                    <TreeView ItemsSource="{Binding ContactGroups}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              Background="Transparent"/>
+
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+
+        <GridSplitter Grid.Column="1" Width="1" Background="{DynamicResource ThemeBorderLowBrush}" HorizontalAlignment="Left"/>
+
+        <!-- ========================== -->
+        <!--  右侧：联系人详情面板      -->
+        <!-- ========================== -->
+        <ContentControl Grid.Column="1" Content="{Binding SelectedContact}">
+          
+        </ContentControl>
+    </Grid>
+</UserControl>
