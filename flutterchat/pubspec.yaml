@@ -1,0 +1,47 @@
+name: flutterchat
+description: "A new Flutter project."
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  # This should match your Dart SDK version, >=3.0.0 is safe
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  window_manager: ^0.5.1
+  desktop_multi_window: ^0.3.0
+  dio: ^5.9.0
+  shared_preferences: ^2.5.3
+  logger: ^2.6.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0 # Using a recent version is good practice
+
+flutter:
+  uses-material-design: true
+
+  # --- THIS IS THE CORRECTED SECTION ---
+  # To add assets to your application, add an assets section, like this:
+  assets:
+    - assets/image/ # This includes all files in the 'assets' directory.
+  # ------------------------------------
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic

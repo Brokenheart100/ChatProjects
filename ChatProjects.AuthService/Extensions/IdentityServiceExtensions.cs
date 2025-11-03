@@ -1,10 +1,10 @@
 ﻿// AuthService/Extensions/IdentityServiceExtensions.cs
-using AuthService.Data;
-using AuthService.Models;
+using ChatProjects.AuthService.Data;
+using ChatProjects.AuthService.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AuthService.Extensions;
+namespace ChatProjects.AuthService.Extensions;
 
 public static class IdentityServiceExtensions
 {

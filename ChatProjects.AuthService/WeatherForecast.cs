@@ -1,4 +1,4 @@
-namespace AuthService
+namespace ChatProjects.AuthService
 {
     public class WeatherForecast
     {

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace AuthService.Dtos;
+namespace ChatProjects.AuthService.Dtos;
 
 // 用于用户注册的 DTO
 public record RegisterDto(

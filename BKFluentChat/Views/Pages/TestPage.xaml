@@ -13,6 +13,27 @@
 
 
     <Page.Resources>
+        <!-- 样式：用于半透明、右对齐的 ComboBox -->
+        <Style x:Key="TransparentComboBoxStyle" TargetType="ComboBox">
+            <!-- 1. 让选中的文本内容右对齐 -->
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+
+            <!-- 2. 设置半透明的背景和边框 -->
+            <!-- Hex 色值 #AARRGGBB, AA 代表透明度 -->
+            <!-- #22FFFFFF 表示一个透明度约为13%的白色背景 -->
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#44FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="White"/>
+
+            <!-- 3. 添加悬浮效果，增加透明度以提供视觉反馈 -->
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#33FFFFFF"/>
+                    <Setter Property="BorderBrush" Value="#66FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <!-- 资源 1: 联系人条目模板 -->
         <DataTemplate x:Key="ContactItemTemplate" DataType="{x:Type models:Contact}">
             <Button Command="{Binding ViewModel.SelectItemCommand, RelativeSource={RelativeSource AncestorType=Page}}"
@@ -188,27 +209,27 @@
                             </Grid.ColumnDefinitions>
                             <Ellipse Grid.Column="0" Width="80" Height="80">
                                 <Ellipse.Fill>
-                                    <ImageBrush ImageSource="{Binding AvatarUrl, TargetNullValue={StaticResource DefaultAvatar}}"/>
+                                    <ImageBrush ImageSource="{Binding AvatarUrl, FallbackValue={StaticResource DefaultAvatar}}"/>
                                 </Ellipse.Fill>
                             </Ellipse>
                             <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Name}" FontSize="24" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding QqNumber}" Foreground="Gray" Margin="0,5,0,0"/>
-                                <TextBlock Text="{Binding Status}" Foreground="Gray" Margin="0,5,0,0"/>
+                                <TextBlock Text="{Binding Name,FallbackValue='Name'}" FontSize="24" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding QqNumber,FallbackValue='QQNumber'}" Foreground="Gray" Margin="0,5,0,0"/>
+                                <TextBlock Text="{Binding Status,FallbackValue='status'}" Foreground="Gray" Margin="0,5,0,0"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2" VerticalAlignment="Top" HorizontalAlignment="Right">
                                 <ui:SymbolIcon Symbol="ThumbLike24" FontSize="20"/>
-                                <TextBlock Text="{Binding LikesCount}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                                <TextBlock Text="{Binding LikesCount,FallbackValue='100'}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
                             </StackPanel>
                         </Grid>
 
                         <!-- 个人信息行 -->
                         <StackPanel Orientation="Horizontal" Margin="0,20,0,0" TextElement.Foreground="Gray">
                             <ui:SymbolIcon Symbol="AppGeneric24" Foreground="#6495ED"/>
-                            <TextBlock Text="{Binding Gender}" Margin="5,0,15,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding Age, StringFormat={}{0}岁}" Margin="0,0,15,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding BirthDate}" Margin="0,0,15,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding ZodiacSign}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Gender,FallbackValue='男'}" Margin="5,0,15,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Age, StringFormat={}{0}岁,FallbackValue='age'}" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding BirthDate,FallbackValue='date'}" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ZodiacSign,FallbackValue='status'}" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <!-- 阳光/月亮/星星 -->
@@ -248,7 +269,11 @@
                                 <ui:SymbolIcon Symbol="Group24"/>
                                 <TextBlock Text="好友分组" Margin="5,0,0,0"/>
                             </StackPanel>
-                            <ComboBox Grid.Row="1" Grid.Column="1" HorizontalContentAlignment="Right" SelectedItem="{Binding GroupName}" Margin="20,10,0,0" Width="150"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" 
+                                      Style="{StaticResource TransparentComboBoxStyle}"
+                                      SelectedItem="{Binding GroupName}" 
+                                      Margin="5" 
+                                      Width="150"/>
 
                             <!-- Row 2: 签名 -->
                             <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,15,0,0">
@@ -288,7 +313,7 @@
                         </ItemsControl>
 
                         <!-- 底部按钮 -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,30,0,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="20">
                             <Button Content="分享"/>
                             <Button Content="音视频通话" Margin="10,0"/>
                             <Button Content="发消息" />

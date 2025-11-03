@@ -1,10 +1,10 @@
-﻿using AuthService.Dtos;
-using AuthService.Models;
-using AuthService.Services;
+﻿using ChatProjects.AuthService.Dtos;
+using ChatProjects.AuthService.Models;
+using ChatProjects.AuthService.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AuthService.Controllers;
+namespace ChatProjects.AuthService.Controllers;
 
 [ApiController] // 标记这是一个 API 控制器，会自动启用模型验证等功能
 [Route("api/[controller]")] // 定义路由模板，这里会自动解析为 "api/auth"

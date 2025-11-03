@@ -1,6 +1,7 @@
+using ChatProjects.AuthService;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AuthService.Controllers
+namespace ChatProjects.AuthService.Controllers
 {
     [ApiController]
     [Route("[controller]")]

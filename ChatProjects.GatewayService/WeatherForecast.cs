@@ -1,4 +1,4 @@
-namespace GatewayService
+namespace ChatProjects.GatewayService
 {
     public class WeatherForecast
     {

@@ -1,6 +1,7 @@
+using ChatProjects.GatewayService;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GatewayService.Controllers
+namespace ChatProjects.GatewayService.Controllers
 {
     [ApiController]
     [Route("[controller]")]

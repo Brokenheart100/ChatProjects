@@ -3,7 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
-namespace GatewayService
+namespace ChatProjects.GatewayService
 {
     public class Program
     {

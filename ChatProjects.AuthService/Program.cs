@@ -1,11 +1,9 @@
-
-using AuthService.Data;
-using AuthService.Extensions;
-using AuthService.Models;
-using AuthService.Services;
+using ChatProjects.AuthService.Data;
+using ChatProjects.AuthService.Extensions;
+using ChatProjects.AuthService.Services;
 using Microsoft.AspNetCore.Identity;
 
-namespace AuthService
+namespace ChatProjects.AuthService
 {
     public class Program
     {
