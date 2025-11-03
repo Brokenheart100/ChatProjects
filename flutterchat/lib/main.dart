@@ -11,7 +11,7 @@ void main() async {
 
   // 设置窗口选项，创建一个小巧、不可拉伸、居中的窗口
   WindowOptions windowOptions = const WindowOptions(
-    size: Size(380, 580), // 设置窗口尺寸
+    size: Size(1024, 768),
     center: true, // 窗口居中
     backgroundColor: Colors.transparent, // 设置背景透明以显示圆角 (如果需要)
     skipTaskbar: false,
@@ -20,7 +20,6 @@ void main() async {
 
   // 等待窗口准备好后显示
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.setResizable(false); // 禁止调整窗口大小
     await windowManager.show();
     await windowManager.focus();
   });
@@ -36,7 +35,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter QQ',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/login',
+      initialRoute: '/home', // 设置初始路由为登录屏幕
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),

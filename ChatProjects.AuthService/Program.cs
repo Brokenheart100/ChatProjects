@@ -12,17 +12,17 @@ namespace ChatProjects.AuthService
             var builder = WebApplication.CreateBuilder(args);
 
             // --- 1. Aspire 和数据库配置 ---
-             builder.AddServiceDefaults(); // 添加 Aspire 默认配置 (遥测, 健康检查等)
-            // 
-            // // 添加并配置 AuthDbContext，"userdb" 对应 AppHost 和 appsettings.json 中的名称
-            // // Aspire 会自动处理连接字符串的注入
-             builder.AddNpgsqlDbContext<AuthDbContext>("userdb");
+            builder.AddServiceDefaults(); // 添加 Aspire 默认配置 (遥测, 健康检查等)
+                                          // 
+                                          // // 添加并配置 AuthDbContext，"userdb" 对应 AppHost 和 appsettings.json 中的名称
+                                          // // Aspire 会自动处理连接字符串的注入
+            builder.AddNpgsqlDbContext<AuthDbContext>("userdb");
 
-             // 使用扩展方法注册 Identity 服务
-             builder.Services.AddIdentityServices();
+            // 使用扩展方法注册 Identity 服务
+            builder.Services.AddIdentityServices();
 
-             // 注册我们自定义的 TokenService
-             builder.Services.AddScoped<TokenService>();
+            // 注册我们自定义的 TokenService
+            builder.Services.AddScoped<TokenService>();
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -30,6 +30,8 @@ namespace ChatProjects.AuthService
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
             app.MapDefaultEndpoints(); // 添加 Aspire 的健康检查等端点
@@ -37,11 +39,13 @@ namespace ChatProjects.AuthService
             if (app.Environment.IsDevelopment())
             {
                 app.MapOpenApi();
+                app.UseSwagger();
+                app.UseSwaggerUI();
             }
 
             app.UseHttpsRedirection();
 
-            app.UseAuthorization();
+            //app.UseAuthorization();
 
 
             app.MapControllers();
