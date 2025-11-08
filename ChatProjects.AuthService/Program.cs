@@ -1,56 +1,103 @@
+// ChatProjects.AuthService/Program.cs
+
 using ChatProjects.AuthService.Data;
 using ChatProjects.AuthService.Extensions;
 using ChatProjects.AuthService.Services;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
-namespace ChatProjects.AuthService
+var builder = WebApplication.CreateBuilder(args);
+
+// --- 1. ×¢ï¿½ï¿½ï¿½ï¿½ï¿½ ---
+
+builder.AddServiceDefaults();
+builder.AddNpgsqlDbContext<AuthDbContext>("userdb");
+
+
+//builder.Services.AddDbContext<AuthDbContext>(options =>
+//    options.UseNpgsql(builder.Configuration.GetConnectionString("userdb")));
+
+// Ê¹ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×¢ï¿½ï¿½ Identity ï¿½ï¿½ØµÄ·ï¿½ï¿½ï¿½
+builder.Services.AddIdentityServices();
+
+// ×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ TokenServiceï¿½ï¿½ï¿½Ô±ï¿½ï¿½ï¿½ Controller ï¿½ï¿½×¢ï¿½ï¿½
+builder.Services.AddScoped<TokenService>();
+
+// **×¢ï¿½ï¿½ MVC ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½**
+builder.Services.AddControllers();
+
+// **ï¿½ï¿½Ó±ï¿½×¼ï¿½ï¿½ Swagger/OpenAPI ï¿½ï¿½ï¿½ï¿½ (Ö»ï¿½ï¿½ï¿½Ò»ï¿½ï¿½)**
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+
+// --- 2. ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½Ã³ï¿½ï¿½ï¿½ ---
+var app = builder.Build();
+
+
+// --- 3. ï¿½ï¿½ï¿½ï¿½ HTTP ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Üµï¿½ (ï¿½Ğ¼ï¿½ï¿½) ---
+
+// Ó³ï¿½ï¿½ Aspire ï¿½Ä½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½Ï¶Ëµï¿½
+app.MapDefaultEndpoints();
+
+// Ö»ï¿½Ú¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã±ï¿½×¼ï¿½ï¿½ Swagger UI ï¿½Ğ¼ï¿½ï¿½
+if (app.Environment.IsDevelopment())
 {
-    public class Program
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    // è®°å½•æ‰€æœ‰è¿›å…¥ç®¡é“ä½†æœ€ç»ˆå¯èƒ½æœªåŒ¹é…çš„è¯·æ±‚
+    var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+    logger.LogWarning("Incoming request: {Method} {Path}", context.Request.Method, context.Request.Path);
+
+    // å¦‚æœç«¯ç‚¹ä»ä¸ºç©ºï¼Œè¯´æ˜æ²¡æœ‰è·¯ç”±åŒ¹é…
+    if (context.GetEndpoint() == null)
     {
-        public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
-
-            // --- 1. Aspire ºÍÊı¾İ¿âÅäÖÃ ---
-            builder.AddServiceDefaults(); // Ìí¼Ó Aspire Ä¬ÈÏÅäÖÃ (Ò£²â, ½¡¿µ¼ì²éµÈ)
-                                          // 
-                                          // // Ìí¼Ó²¢ÅäÖÃ AuthDbContext£¬"userdb" ¶ÔÓ¦ AppHost ºÍ appsettings.json ÖĞµÄÃû³Æ
-                                          // // Aspire »á×Ô¶¯´¦ÀíÁ¬½Ó×Ö·û´®µÄ×¢Èë
-            builder.AddNpgsqlDbContext<AuthDbContext>("userdb");
-
-            // Ê¹ÓÃÀ©Õ¹·½·¨×¢²á Identity ·şÎñ
-            builder.Services.AddIdentityServices();
-
-            // ×¢²áÎÒÃÇ×Ô¶¨ÒåµÄ TokenService
-            builder.Services.AddScoped<TokenService>();
-
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
-            builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
-            var app = builder.Build();
-            app.MapDefaultEndpoints(); // Ìí¼Ó Aspire µÄ½¡¿µ¼ì²éµÈ¶Ëµã
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-
-            app.UseHttpsRedirection();
-
-            //app.UseAuthorization();
+        logger.LogError("No endpoint found for {Method} {Path}", context.Request.Method, context.Request.Path);
+    }
+    await next(context);
+});
 
 
-            app.MapControllers();
+// ï¿½ï¿½ï¿½ï¿½ HTTPS ï¿½Ø¶ï¿½ï¿½ï¿½
+app.UseHttpsRedirection();
 
-            app.Run();
-        }
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¨ï¿½Ğ¼ï¿½ï¿½
+app.UseAuthorization();
+
+await ApplyMigrationsAsync(app.Services);
+app.MapControllers();
+// --- 4. ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ ---
+app.Run();
+
+
+
+// --- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½İ¿ï¿½Ç¨ï¿½ï¿½ ---
+async Task ApplyMigrationsAsync(IServiceProvider services)
+{
+    // ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Âµï¿½ï¿½ï¿½ï¿½ï¿½×¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô°ï¿½È«ï¿½Ø»ï¿½È¡ï¿½ï¿½ï¿½ï¿½
+    using var scope = services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        logger.LogInformation("Attempting to apply database migrations...");
+
+        // ï¿½ì²½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ï¿½Ğ¹ï¿½ï¿½ï¿½ï¿½Ç¨ï¿½ï¿½
+        await dbContext.Database.MigrateAsync();
+
+        logger.LogInformation("Database migrations applied successfully.");
+        // 4.2 Ö´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        await app.SeedDatabaseAsync();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while applying database migrations.");
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¸ï¿½ï¿½ï¿½×³ï¿½Ä´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß¼ï¿½ï¿½ï¿½ï¿½ï¿½Ç¨ï¿½ï¿½Ê§ï¿½ï¿½Ê±Ö±ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½Í£Ö¹ï¿½ï¿½ï¿½ï¿½ï¿½
     }
 }

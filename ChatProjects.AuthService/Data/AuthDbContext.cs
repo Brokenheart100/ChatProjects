@@ -1,5 +1,4 @@
-﻿// AuthService/AuthDbContext.cs
-using ChatProjects.AuthService.Models;
+﻿using ChatProjects.AuthService.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 

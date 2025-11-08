@@ -24,8 +24,6 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
     {
-        // 模型验证由 [ApiController] 自动处理，如果无效会直接返回 400 Bad Request
-
         var userExists = await _userManager.FindByNameAsync(registerDto.Username);
         if (userExists != null)
         {

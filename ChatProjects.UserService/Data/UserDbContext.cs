@@ -1,6 +1,4 @@
-﻿// UserService/Data/UserDbContext.cs
-
-using ChatProjects.UserService.Entities;
+﻿using ChatProjects.UserService.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChatProjects.UserService.Data;
@@ -21,3 +19,5 @@ public class UserDbContext : DbContext
         modelBuilder.Entity<AppUser>().ToTable("AspNetUsers");
     }
 }
+
+//dotnet ef migrations add InitialCreate --context UserDbContext

@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter QQ',
       debugShowCheckedModeBanner: false,
-      initialRoute: '/home', // 设置初始路由为登录屏幕
+      initialRoute: '/login', // 设置初始路由为登录屏幕
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),

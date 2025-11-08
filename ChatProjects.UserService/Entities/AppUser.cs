@@ -1,6 +1,4 @@
-﻿// UserService/Entities/AppUser.cs
-
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ChatProjects.UserService.Entities;
 

@@ -82,9 +82,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontSize: 32, // 4. 设置字体大小
               ),
               const SizedBox(height: 30),
-              _buildInputField(_usernameController, '输入QQ号', hasDropdown: true),
+              _buildInputField(_usernameController, '输入Username',
+                  hasDropdown: true),
               const SizedBox(height: 15),
-              _buildInputField(_passwordController, '输入QQ密码', isPassword: true),
+              _buildInputField(
+                _passwordController,
+                '输入Password',
+              ),
               const SizedBox(height: 20),
               _buildAgreementCheckbox(),
               const SizedBox(height: 20),

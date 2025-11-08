@@ -4,6 +4,6 @@ namespace ChatProjects.AuthService.Models
 {
     public class AppUser : IdentityUser
     {
-        // 例如: public string? DisplayName { get; set; }
+         public string? DisplayName { get; set; }
     }
 }

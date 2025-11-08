@@ -3,27 +3,21 @@
 var cache = builder.AddRedis("cache");
 
 var postgresServer = builder.AddPostgres("postgres-db")
-    .WithDataVolume()
+    .WithHttpEndpoint(1234,1234,name: "postgresServer")
     .WithPgAdmin()
-    .WithEnvironment("POSTGRES_PASSWORD", "your_dev_password")
-    .WithEndpoint("postgres", e =>
-    {
-        e.Port = 5433;       // Port 对应 hostPort
-        e.TargetPort = 5432; // TargetPort 对应 containerPort
-    });
+    .WithDataVolume("postgres_data");
 
-var userDb = postgresServer.AddDatabase("userdb");
-
+var userdb = postgresServer.AddDatabase("userdb");
 
 var mongoServer = builder.AddMongoDB("mongo-db");
-
 
 var chatHistoryDb = mongoServer.AddDatabase("chathistorydb");
 
 var userService = builder.AddProject<Projects.ChatProjects_UserService>("userservice")
-    .WithReference(userDb);
+    .WithReference(userdb);
+
 var authService = builder.AddProject<Projects.ChatProjects_AuthService>("authservice")
-    .WithReference(userDb);
+    .WithReference(userdb);
 
 builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
     .WithReference(authService)
@@ -32,3 +26,5 @@ builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
 
 
 builder.Build().Run();
+
+

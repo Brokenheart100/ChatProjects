@@ -20,20 +20,21 @@ namespace ChatProjects.GatewayService
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
-            // 3. **ºËÐÄ£º×¢²á YARP ·´Ïò´úÀí·þÎñ**
-            //    ²¢´ÓÅäÖÃÎÄ¼þ ("ReverseProxy" ½Ú) ¼ÓÔØÂ·ÓÉºÍ¼¯ÈºµÄÅäÖÃ
+            // 3. **ï¿½ï¿½ï¿½Ä£ï¿½×¢ï¿½ï¿½ YARP ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½**
+            //    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ ("ReverseProxy" ï¿½ï¿½) ï¿½ï¿½ï¿½ï¿½Â·ï¿½ÉºÍ¼ï¿½Èºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             builder.Services.AddReverseProxy()
-                .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+                .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+                .AddServiceDiscoveryDestinationResolver();
 
-            // 4. ÅäÖÃ CORS (¿çÓò×ÊÔ´¹²Ïí)
-            //    ÕâÊÇÔÊÐí Flutter ¿Í»§¶Ë»òÆäËûÓòµÄ Web Ó¦ÓÃ·ÃÎÊ´ËÍø¹ØËù±ØÐèµÄ
+            // 4. ï¿½ï¿½ï¿½ï¿½ CORS (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½)
+            //    ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Flutter ï¿½Í»ï¿½ï¿½Ë»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Web Ó¦ï¿½Ã·ï¿½ï¿½Ê´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.AllowAnyOrigin()      // ÔÊÐíÈÎºÎÀ´Ô´ (ÔÚÉú²ú»·¾³ÖÐÓ¦ÅäÖÃÎª¾ßÌåµÄ¿Í»§¶ËµØÖ·)
-                        .AllowAnyMethod()     // ÔÊÐíÈÎºÎ HTTP ·½·¨ (GET, POST, etc.)
-                        .AllowAnyHeader();    // ÔÊÐíÈÎºÎ HTTP ÇëÇóÍ·
+                    policy.AllowAnyOrigin()      // ï¿½ï¿½ï¿½ï¿½ï¿½Îºï¿½ï¿½ï¿½Ô´ (ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Ä¿Í»ï¿½ï¿½Ëµï¿½Ö·)
+                        .AllowAnyMethod()     // ï¿½ï¿½ï¿½ï¿½ï¿½Îºï¿½ HTTP ï¿½ï¿½ï¿½ï¿½ (GET, POST, etc.)
+                        .AllowAnyHeader();    // ï¿½ï¿½ï¿½ï¿½ï¿½Îºï¿½ HTTP ï¿½ï¿½ï¿½ï¿½Í·
                 });
             });
 
@@ -71,10 +72,12 @@ namespace ChatProjects.GatewayService
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
             app.UseCors("AllowAll");
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½È¨ï¿½Ð¼ï¿½ï¿½ (Ë³ï¿½ï¿½ï¿½ï¿½ï¿½Òª)
+            app.UseAuthentication();
             app.UseAuthorization();
-
+            app.MapReverseProxy();
 
             app.MapControllers();
 
