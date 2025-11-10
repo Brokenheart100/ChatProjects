@@ -41,7 +41,8 @@ public class AuthController : ControllerBase
         {
             Email = registerDto.Email,
             UserName = registerDto.Username,
-            SecurityStamp = Guid.NewGuid().ToString()
+            SecurityStamp = Guid.NewGuid().ToString(),
+            AvatarUrl = registerDto.AvatarUrl
         };
 
         var result = await _userManager.CreateAsync(newUser, registerDto.Password);
@@ -70,7 +71,7 @@ public class AuthController : ControllerBase
 
         var token = _tokenService.GenerateJwtToken(user);
 
-        var response = new AuthResponseDto(user.Id, user.UserName!, user.Email!, token);
+        var response = new AuthResponseDto(user.Id, user.UserName!, user.Email!, token, user.AvatarUrl);
 
         // 返回 200 OK，并在响应体中包含 AuthResponseDto 的 JSON 数据
         return Ok(response);

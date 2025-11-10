@@ -6,12 +6,14 @@ class LeftNavRail extends StatelessWidget {
   final int selectedIndex;
   // 导航项选中状态变化时的回调函数（参数为新选中的索引）
   final ValueChanged<int> onDestinationSelected;
+  final String? avatarUrl;
 
   // 构造函数：接收选中索引和选中变化回调，均为必选参数
   const LeftNavRail({
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    this.avatarUrl,
   });
 
   // 构建组件UI
@@ -27,9 +29,11 @@ class LeftNavRail extends StatelessWidget {
           // 顶部间距（20像素）
           const SizedBox(height: 20),
           // 用户头像：圆形，半径20，使用本地资源图片
-          const CircleAvatar(
+          CircleAvatar(
             radius: 20,
-            backgroundImage: AssetImage('assets/Image/30.jpg'),
+            backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
+                ? NetworkImage(avatarUrl!)
+                : const AssetImage('assets/Image/30.jpg') as ImageProvider,
           ),
           // 头像与下方导航图标之间的间距（20像素）
           const SizedBox(height: 20),

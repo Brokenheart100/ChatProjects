@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutterchat/services/logger_service.dart';
 import 'package:window_manager/window_manager.dart';
 import '../services/api_service.dart';
+import 'package:image_picker/image_picker.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,33 +15,79 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _apiService = ApiService(); // 创建服务实例
   bool _isLoading = false; // 用于控制加载状态
+  String _loadingText = '正在注册...';
+  XFile? _avatarFile;
 
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  // --- 核心新增 2: 图片选择逻辑 ---
+  Future<void> _pickAvatar() async {
+    final picker = ImagePicker();
+    try {
+      // 从用户的相册中打开图片选择器
+      final XFile? pickedFile =
+          await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          _avatarFile = pickedFile;
+        });
+      }
+    } catch (e) {
+      _showSnackBar('选择图片失败: $e', isError: true);
+    }
+  }
+
 // 注册逻辑
   Future<void> _register() async {
-    if (_isLoading) return; // 防止重复点击
+    if (_isLoading) return;
 
-    setState(() => _isLoading = true);
+    // 前端验证
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showSnackBar('两次输入的密码不一致', isError: true);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _loadingText = '正在处理...';
+    });
+
+    String? avatarObjectKey;
 
     try {
+      // --- 步骤 1 & 2: 如果有头像，先上传头像 ---
+      if (_avatarFile != null) {
+        setState(() => _loadingText = '正在上传头像...');
+        logger.i('Avatar selected, starting upload process...');
+
+        // 1. 获取上传许可
+        final uploadInfo = await _apiService.getUploadUrl(_avatarFile!.name);
+        avatarObjectKey =
+            await _apiService.uploadFileAndGetObjectKey(_avatarFile!);
+
+        logger.i('Avatar upload completed. ObjectKey: $avatarObjectKey');
+      }
+
+      // --- 步骤 3: 提交注册信息到后端 ---
+      setState(() => _loadingText = '正在创建账号...');
+      logger.i('Calling register API...');
+
       await _apiService.register(
         username: _usernameController.text,
         email: _emailController.text,
         password: _passwordController.text,
+        avatarUrl: avatarObjectKey, // 将上传后得到的 objectKey 作为 avatarUrl
       );
 
-      // 注册成功
       _showSnackBar('注册成功！请返回登录。', isError: false);
-      // 可选：2秒后自动返回登录页
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) Navigator.of(context).pop();
       });
     } catch (e) {
-      // 注册失败
+      logger.e('Registration process failed', error: e);
       _showSnackBar(e.toString(), isError: true);
     } finally {
       if (mounted) {
@@ -83,6 +132,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: [
               _buildTitleBar(context), // 标题栏，包含返回按钮
               const SizedBox(height: 30),
+              _buildAvatarPicker(),
+              const SizedBox(height: 20),
               const Text(
                 '创建您的账号',
                 style: TextStyle(
@@ -104,6 +155,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarPicker() {
+    return GestureDetector(
+      onTap: _pickAvatar,
+      child: CircleAvatar(
+        radius: 50,
+        backgroundColor: const Color(0xFF403E54),
+        // 如果用户已经选择了图片，就显示图片预览
+        backgroundImage:
+            _avatarFile != null ? FileImage(File(_avatarFile!.path)) : null,
+        // 如果没有选择图片，就显示一个图标和提示文字
+        child: _avatarFile == null
+            ? const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_a_photo, color: Colors.white54, size: 30),
+                  SizedBox(height: 4),
+                  Text('选择头像',
+                      style: TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
+              )
+            : null,
       ),
     );
   }
@@ -169,11 +245,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
           child: _isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 3),
+              ? Row(
+                  // 使用 Row 来显示加载圈和文字
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2.5),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(_loadingText,
+                        style:
+                            const TextStyle(fontSize: 16, color: Colors.white)),
+                  ],
                 )
               : const Text('注册',
                   style: TextStyle(

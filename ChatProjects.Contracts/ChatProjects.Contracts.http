@@ -1,0 +1,6 @@
+@ChatProjects.Contracts_HostAddress = http://localhost:5069
+
+GET {{ChatProjects.Contracts_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,6 @@
+@ChatProjects.OrleansSilo_HostAddress = http://localhost:5218
+
+GET {{ChatProjects.OrleansSilo_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

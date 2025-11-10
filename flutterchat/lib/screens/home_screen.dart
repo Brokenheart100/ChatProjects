@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutterchat/models/auth_response.dart';
+import 'package:flutterchat/services/api_service.dart';
 import '../models/chat_message.dart';
 import '../models/contact.dart';
 import '../models/contact_group.dart';
@@ -20,6 +22,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedNavIndex = 0;
   int _selectedConversationIndex = 0;
 
+  AuthResponse? _currentUser;
+  final _apiService = ApiService();
+  String _fullAvatarUrl = '';
   // --- Data for Chat View with CORRECTED asset paths ---
   static final List<ChatMessage> _messagesForUsusus = [
     ChatMessage(
@@ -165,6 +170,20 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 从路由参数中获取登录成功后传递过来的用户信息
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is AuthResponse) {
+      setState(() {
+        _currentUser = args;
+        // 使用 ApiService 构建完整的头像 URL
+        _fullAvatarUrl = _apiService.getFullAvatarUrl(_currentUser?.avatarUrl);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF363636),
@@ -181,6 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _selectedNavIndex = index;
                     });
                   },
+                  avatarUrl: _fullAvatarUrl,
                 ),
                 _buildMainPanel(),
               ],

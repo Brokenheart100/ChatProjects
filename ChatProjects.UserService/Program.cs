@@ -8,26 +8,23 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- 1. ×¢²á·þÎñ ---
+// --- 1. ×¢ï¿½ï¿½ï¿½ï¿½ï¿½ ---
 
 builder.AddServiceDefaults();
 builder.AddNpgsqlDbContext<UserDbContext>("userdb");
 
 
-//builder.Services.AddDbContext<UserDbContext>(options =>
-//    options.UseNpgsql(builder.Configuration.GetConnectionString("userdb")));
-
-// **ºËÐÄÐÞ¸´£ºÌí¼ÓÍêÕû¡¢ÕýÈ·µÄ JWT ÈÏÖ¤ÅäÖÃ**
+// **ï¿½ï¿½ï¿½ï¿½ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½ JWT ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½**
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["SecretKey"];
 
-// ¸æËßÏµÍ³Ä¬ÈÏµÄÈÏÖ¤ºÍÖÊÑ¯·½°¸ÊÇ "Bearer"
+// ï¿½ï¿½ï¿½ï¿½ÏµÍ³Ä¬ï¿½Ïµï¿½ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½Ñ¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ "Bearer"
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
-    .AddJwtBearer(options => // ÅäÖÃ "Bearer" ·½°¸µÄ¾ßÌåÑéÖ¤¹æÔò
+    .AddJwtBearer(options => // ï¿½ï¿½ï¿½ï¿½ "Bearer" ï¿½ï¿½ï¿½ï¿½ï¿½Ä¾ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -47,10 +44,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
-// --- 2. ¹¹½¨Ó¦ÓÃ ---
+// --- 2. ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ ---
 var app = builder.Build();
 
-// --- 3. ÅäÖÃÖÐ¼ä¼þ¹ÜµÀ ---
+// --- 3. ï¿½ï¿½ï¿½ï¿½ï¿½Ð¼ï¿½ï¿½ï¿½Üµï¿½ ---
 
 app.MapDefaultEndpoints();
 
@@ -61,12 +58,12 @@ if (app.Environment.IsDevelopment())
 }
 app.UseHttpsRedirection();
 
-// **ºËÐÄÐÞ¸´£ºÆôÓÃÈÏÖ¤ºÍÊÚÈ¨ÖÐ¼ä¼þ (Ë³ÐòºÜÖØÒª)**
+// **ï¿½ï¿½ï¿½ï¿½ï¿½Þ¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ï¿½ï¿½ï¿½ï¿½È¨ï¿½Ð¼ï¿½ï¿½ (Ë³ï¿½ï¿½ï¿½ï¿½ï¿½Òª)**
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
 
-// --- 4. ÔËÐÐÓ¦ÓÃ ---
+// --- 4. ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ ---
 app.Run();

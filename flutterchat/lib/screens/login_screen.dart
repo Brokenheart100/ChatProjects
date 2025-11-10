@@ -25,12 +25,12 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _apiService.login(
+      final authResponse = await _apiService.login(
         username: _usernameController.text,
         password: _passwordController.text,
       );
       // 登录成功，直接替换当前页面为 home 页面
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(context, '/home', arguments: authResponse);
     } catch (e) {
       _showSnackBar(e.toString(), isError: true);
     } finally {

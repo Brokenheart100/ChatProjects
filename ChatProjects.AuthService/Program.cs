@@ -1,9 +1,11 @@
-// ChatProjects.AuthService/Program.cs
-
 using ChatProjects.AuthService.Data;
 using ChatProjects.AuthService.Extensions;
 using ChatProjects.AuthService.Services;
 using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using Wolverine;
+using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +30,18 @@ builder.Services.AddControllers();
 // **��ӱ�׼�� Swagger/OpenAPI ���� (ֻ���һ��)**
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+//builder.Services.AddOpenTelemetry().WithTracing(TracerProviderBuilder =>
+//            {
+//                TracerProviderBuilder
+//                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(builder.Environment.ApplicationName))
+//                .AddSource("Wolverine");
 
+//            });
+//builder.Host.UseWolverine(opts =>
+//{
+//    opts.UseRabbitMqUsingNamedConnection("messaging").AutoProvision();
+//    opts.PublishAllMessages().ToRabbitExchange("file-exchange");
+//});
 
 // --- 2. ����Ӧ�ó��� ---
 var app = builder.Build();

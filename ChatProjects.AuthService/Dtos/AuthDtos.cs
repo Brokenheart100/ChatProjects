@@ -12,7 +12,8 @@ public record RegisterDto(
     string Username,
 
     [Required]
-    string Password
+    string Password,
+    string? AvatarUrl
 );
 
 // 用于用户登录的 DTO
@@ -29,5 +30,6 @@ public record AuthResponseDto(
     string UserId,
     string Username,
     string Email,
-    string Token
+    string Token,
+    string? AvatarUrl // <-- 核心新增：添加此字段
 );
