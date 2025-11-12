@@ -13,9 +13,8 @@ namespace ChatProjects.SearchService
 
             // 将 InMemoryDataStore 注册为单例，这样在整个应用生命周期中数据只会被创建一次
             builder.Services.AddSingleton<InMemoryDataStore>();
-
+            builder.AddNpgsqlDbContext<UserDbContext>("userdb");
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
             var app = builder.Build();

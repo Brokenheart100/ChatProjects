@@ -1,9 +1,10 @@
-﻿// SearchService/Controllers/SearchController.cs
-
+﻿using System;
+using ChatProjects.Contracts.Dtos;
 using ChatProjects.SearchService.Data;
 using ChatProjects.SearchService.Dtos;
 using ChatProjects.SearchService.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 // 我们仍然保留 Models 的 using，但会在代码中显式指定
 
 namespace ChatProjects.SearchService.Controllers;
@@ -13,16 +14,16 @@ namespace ChatProjects.SearchService.Controllers;
 public class SearchController : ControllerBase
 {
     private readonly InMemoryDataStore _dataStore;
-
-    public SearchController(InMemoryDataStore dataStore)
+    private readonly UserDbContext _context;
+    public SearchController(InMemoryDataStore dataStore, UserDbContext context)
     {
         _dataStore = dataStore;
+        _context = context;
     }
 
     [HttpGet("groups")]
     public IActionResult SearchGroups([FromQuery] string? term, [FromQuery] string? tag)
     {
-        // --- 核心修复：使用完整的命名空间来引用 Group ---
         var query = _dataStore.Groups.AsQueryable() as IQueryable<Group>;
 
         if (!string.IsNullOrWhiteSpace(term))
@@ -52,5 +53,32 @@ public class SearchController : ControllerBase
         )).ToList();
 
         return Ok(dtos);
+    }
+
+    // GET /api/search/users?query=...
+    [HttpGet("users")]
+    public async Task<IActionResult> SearchUsers([FromQuery] string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return Ok(new List<UserSearchResultDto>());
+        }
+
+        // 为了安全，不要在 LIKE 中使用 %query%
+        var formattedQuery = $"{query}%";
+
+        // 从 AspNetUsers 表中模糊搜索用户名匹配的用户
+        var users = await _context.Users
+            .Where(u => EF.Functions.ILike(u.UserName, formattedQuery))
+            .Take(10) // 限制最多返回10条结果
+            .Select(u => new UserSearchResultDto(
+                u.Id,
+                u.UserName,
+                u.AvatarUrl,
+                "NotFriend" // 这里的逻辑需要完善，需要查询关系表
+            ))
+            .ToListAsync();
+
+        return Ok(users);
     }
 }

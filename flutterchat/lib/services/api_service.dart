@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart'; // 网络请求库，用于发送HTTP请求
 import 'package:flutterchat/models/auth_response.dart'; // 认证响应数据模型
+import 'package:flutterchat/models/user_search_result.dart';
 import 'package:flutterchat/services/logger_service.dart'; // 日志服务，用于记录系统日志
 import 'package:image_picker/image_picker.dart'; // 图片选择库，用于获取本地图片文件
 import 'package:shared_preferences/shared_preferences.dart'; // 本地存储库，用于保存认证token
@@ -55,6 +56,26 @@ class ApiService {
         return handler.next(options); // 继续处理请求
       },
     ));
+  }
+
+  Future<List<UserSearchResult>> searchUsers(String query) async {
+    // 需要携带 Token，所以这个 dio 实例应该配置了 Authorization 拦截器
+    final response = await _dio.get(
+      '/gateway/search/users',
+      queryParameters: {'query': query},
+    );
+
+    // 解析返回的列表
+    final List<dynamic> jsonList = response.data;
+    return jsonList.map((json) => UserSearchResult.fromJson(json)).toList();
+  }
+
+  // 3. 新增发送好友请求的方法
+  Future<void> sendFriendRequest(String recipientId) async {
+    await _dio.post(
+      '/gateway/social/requests', // 假设你的网关路由是 /gateway/social
+      data: {'recipientId': recipientId},
+    );
   }
 
   /// 上传文件并获取对象标识

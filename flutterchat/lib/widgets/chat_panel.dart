@@ -27,7 +27,7 @@ class ChatPanel extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Color(0xFF333333),
         image: DecorationImage(
-          image: AssetImage('assets/chat_bg.png'), // 聊天背景图资源路径
+          image: AssetImage('assets/Image/10.jpg'), // 聊天背景图资源路径
           fit: BoxFit.cover, // 背景图铺满容器
           opacity: 0.1, // 背景图透明度（避免遮挡前景内容）
         ),

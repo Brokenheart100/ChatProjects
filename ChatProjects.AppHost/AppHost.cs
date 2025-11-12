@@ -71,6 +71,9 @@ var fileService = builder.AddProject<Projects.ChatProjects_FileService>("fileser
     .WithEnvironment("Minio__SecretKey", minioSecretKey)
     .WithEnvironment("Minio__BucketName", minioBucket);
 
+var searchService = builder.AddProject<Projects.ChatProjects_SearchService>("searchservice")
+    .WithReference(userdb); // 它需要访问用户数据库
+
 builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
     .WithReference(rabbitmq)
     .WithReference(fileService)

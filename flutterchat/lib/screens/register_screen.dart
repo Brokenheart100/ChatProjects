@@ -64,7 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         logger.i('Avatar selected, starting upload process...');
 
         // 1. 获取上传许可
-        final uploadInfo = await _apiService.getUploadUrl(_avatarFile!.name);
+        await _apiService.getUploadUrl(_avatarFile!.name);
         avatarObjectKey =
             await _apiService.uploadFileAndGetObjectKey(_avatarFile!);
 

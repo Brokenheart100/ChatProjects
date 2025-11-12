@@ -1,6 +1,7 @@
 // lib/widgets/contacts_panel.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutterchat/widgets/custom_search_field.dart';
 import '../models/contact.dart';
 import '../models/contact_group.dart';
 import 'contact_detail_panel.dart'; // <-- Import the new detail panel
@@ -45,30 +46,9 @@ class _ContactsPanelState extends State<ContactsPanel> {
             padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                Expanded(
-                  child: Container(
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF5A5855),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const TextField(
-                      style: TextStyle(color: Colors.white, fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: '搜索',
-                        hintStyle: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 13,
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          size: 16,
-                          color: Colors.white54,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.only(bottom: 12),
-                      ),
-                    ),
+                const Expanded(
+                  child: CustomSearchField(
+                    hintText: '搜索',
                   ),
                 ),
                 const SizedBox(width: 8),

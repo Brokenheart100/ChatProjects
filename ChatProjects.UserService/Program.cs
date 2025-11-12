@@ -1,5 +1,3 @@
-// ChatProjects.UserService/Program.cs
-
 using System.Text;
 using ChatProjects.UserService.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

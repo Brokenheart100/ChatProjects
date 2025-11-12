@@ -3,6 +3,7 @@ using System;
 using ChatProjects.UserService.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,13 +12,15 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ChatProjects.UserService.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    partial class UserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251112035845_ConvertFriendRequestStatusToEnum")]
+    partial class ConvertFriendRequestStatusToEnum
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.11")
+                .HasAnnotation("ProductVersion", "9.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -68,31 +71,6 @@ namespace ChatProjects.UserService.Migrations
                         .IsUnique();
 
                     b.ToTable("FriendRequests");
-                });
-
-            modelBuilder.Entity("ChatProjects.UserService.Entities.Friendship", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("BecameFriendsAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("User1Id")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("User2Id")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("User1Id", "User2Id")
-                        .IsUnique();
-
-                    b.ToTable("Friendships");
                 });
 #pragma warning restore 612, 618
         }
