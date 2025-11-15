@@ -1,4 +1,6 @@
-﻿namespace BKFluentChat.ViewModels.Pages
+﻿using System.Diagnostics;
+
+namespace BKFluentChat.ViewModels.Pages
 {
     public partial class DashboardViewModel : ObservableObject
     {
@@ -9,6 +11,7 @@
         private void OnCounterIncrement()
         {
             Counter++;
+            Debug.WriteLine($"couter {Counter}");
         }
     }
 }

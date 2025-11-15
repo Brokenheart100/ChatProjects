@@ -55,27 +55,79 @@ class ApiService {
         }
         return handler.next(options); // 继续处理请求
       },
+      onError: (DioException e, handler) async {
+        // (可选，但推荐) 在这里处理 401 错误，例如令牌过期
+        if (e.response?.statusCode == 401) {
+          // 令牌无效或过期，可以在这里尝试刷新令牌，或者直接清除本地凭据并导航到登录页
+          await logout();
+        }
+        return handler.next(e);
+      },
     ));
   }
-
   Future<List<UserSearchResult>> searchUsers(String query) async {
-    // 需要携带 Token，所以这个 dio 实例应该配置了 Authorization 拦截器
-    final response = await _dio.get(
-      '/gateway/search/users',
-      queryParameters: {'query': query},
-    );
+    // --- 1. 添加日志：记录方法被调用和参数 ---
+    logger.i('开始搜索用户，查询关键词: "$query"');
 
-    // 解析返回的列表
-    final List<dynamic> jsonList = response.data;
-    return jsonList.map((json) => UserSearchResult.fromJson(json)).toList();
+    try {
+      final response = await _dio.get(
+        '/gateway/search/users',
+        queryParameters: {'query': query},
+      );
+
+      final List<dynamic> jsonList = response.data;
+      final results =
+          jsonList.map((json) => UserSearchResult.fromJson(json)).toList();
+
+      // --- 2. 添加日志：记录成功的结果 ---
+      logger.i('成功搜索到 ${results.length} 个用户。');
+
+      return results;
+    } on DioException catch (e) {
+      // --- 3. 添加日志：记录详细的错误信息 ---
+      logger.e(
+        '搜索用户失败！查询: "$query"',
+        error: e, // 将 DioException 对象作为 error 参数传递
+        stackTrace: e.stackTrace, // 传递堆栈信息
+      );
+      // ------------------------------------
+      throw _handleError(e, "searchUsers");
+    } catch (e, stackTrace) {
+      // 捕获其他可能的非 Dio 异常
+      logger.e(
+        '解析搜索结果时发生未知错误！查询: "$query"',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      throw '无法解析搜索结果: $e';
+    }
   }
 
-  // 3. 新增发送好友请求的方法
+  /// 发送好友请求
   Future<void> sendFriendRequest(String recipientId) async {
-    await _dio.post(
-      '/gateway/social/requests', // 假设你的网关路由是 /gateway/social
-      data: {'recipientId': recipientId},
-    );
+    // --- 1. 添加日志：记录方法被调用和参数 ---
+    logger.i('正在发送好友请求给用户 ID: $recipientId');
+
+    try {
+      await _dio.post(
+        // 假设您的网关路由是 /gateway/friends/requests
+        // 根据您后端的 FriendsController.cs 调整
+        '/gateway/friends/requests',
+        data: {'recipientId': recipientId},
+      );
+
+      // --- 2. 添加日志：记录成功的结果 ---
+      logger.i('成功发送好友请求给用户 ID: $recipientId');
+    } on DioException catch (e) {
+      // --- 3. 添加日志：记录详细的错误信息 ---
+      logger.e(
+        '发送好友请求失败！接收方 ID: $recipientId',
+        error: e,
+        stackTrace: e.stackTrace,
+      );
+      // ------------------------------------
+      throw _handleError(e, "sendFriendRequest");
+    }
   }
 
   /// 上传文件并获取对象标识
@@ -292,6 +344,28 @@ class ApiService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+  }
+
+  Future<AuthResponse> getSession() async {
+    logger.i('正在尝试通过已保存的 Token 恢复会话...');
+    try {
+      // Dio 拦截器会自动附加 Token
+      final response = await _dio.get('/gateway/auth/session');
+
+      if (response.statusCode == 200 && response.data != null) {
+        final authResponse = AuthResponse.fromJson(response.data);
+        // 后端返回了新的 Token，我们用新 Token 覆盖旧的
+        await saveToken(authResponse.token);
+        logger.i('会话恢复成功！用户: ${authResponse.username}');
+        return authResponse;
+      } else {
+        throw '会话恢复失败';
+      }
+    } on DioException catch (e) {
+      // 如果 getSession 失败 (例如 Token 过期导致 401)，就清除本地 Token
+      await logout();
+      throw _handleError(e, "getSession");
+    }
   }
 
   /// 保存认证token到本地存储

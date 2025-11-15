@@ -8,14 +8,20 @@ public class UserDbContext : DbContext
     public UserDbContext(DbContextOptions<UserDbContext> options) : base(options)
     {
     }
-    public DbSet<AppUser> Users { get; set; }
+    // public DbSet<UserProfile> Users { get; set; }
+    public DbSet<UserProfile> UserProfiles { get; set; }
     public DbSet<FriendRequest> FriendRequests { get; set; }
     public DbSet<Friendship> Friendships { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<AppUser>().ToTable("AspNetUsers");
+        //modelBuilder.Entity<UserProfile>().ToTable("AspNetUsers", schema: "public");
+        modelBuilder.Entity<UserProfile>(entity =>
+        {
+            entity.HasKey(e => e.Id); // 将 UserId 设为主键
+            entity.ToTable("UserProfiles");
+        });
 
         // (可选但推荐) 在这里为 FriendRequest 配置主键等
         modelBuilder.Entity<FriendRequest>(entity =>

@@ -34,7 +34,7 @@ public class ProfileController : ControllerBase
             return Unauthorized(); // 如果令牌中没有用户 ID，则拒绝访问
         }
 
-        var user = await _context.Users.FindAsync(userId);
+        var user = await _context.UserProfiles.FindAsync(userId);
 
         if (user == null)
         {
@@ -56,7 +56,7 @@ public class ProfileController : ControllerBase
             return Unauthorized();
         }
 
-        var user = await _context.Users.FindAsync(userId);
+        var user = await _context.UserProfiles.FindAsync(userId);
         if (user == null)
         {
             return NotFound("未找到用户");
@@ -65,7 +65,7 @@ public class ProfileController : ControllerBase
         // 更新字段
         user.DisplayName = updateDto.DisplayName;
 
-        _context.Users.Update(user);
+        _context.UserProfiles.Update(user);
         await _context.SaveChangesAsync();
 
         return NoContent(); // 204 No Content 是更新成功的标准响应
@@ -76,7 +76,7 @@ public class ProfileController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUserProfileById(string id)
     {
-        var user = await _context.Users.FindAsync(id);
+        var user = await _context.UserProfiles.FindAsync(id);
         if (user == null)
         {
             return NotFound();

@@ -9,6 +9,5 @@ final logger = Logger(
     lineLength: 80, // 每行日志的宽度
     colors: true, // 为不同级别的日志启用颜色
     printEmojis: true, // 在日志前面打印表情符号
-    printTime: true, // 打印时间戳
   ),
 );

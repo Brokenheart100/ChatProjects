@@ -15,5 +15,10 @@ namespace BKFluentChat.Views.Pages
             DataContext = this;
             InitializeComponent();
         }
+        private void AddButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 当按钮被点击时，手动打开附加在它上面的 ContextMenu
+            //AddButton.ContextMenu.IsOpen = true;
+        }
     }
 }

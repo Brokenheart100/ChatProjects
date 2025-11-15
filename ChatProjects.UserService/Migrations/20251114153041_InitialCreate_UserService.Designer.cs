@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ChatProjects.UserService.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20251112042555_AddFriendshipsTable12")]
-    partial class AddFriendshipsTable12
+    [Migration("20251114153041_InitialCreate_UserService")]
+    partial class InitialCreate_UserService
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,25 +24,6 @@ namespace ChatProjects.UserService.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("ChatProjects.UserService.Entities.AppUser", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
-
-                    b.Property<string>("DisplayName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Email")
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserName")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AspNetUsers", (string)null);
-                });
 
             modelBuilder.Entity("ChatProjects.UserService.Entities.FriendRequest", b =>
                 {
@@ -96,6 +77,25 @@ namespace ChatProjects.UserService.Migrations
                         .IsUnique();
 
                     b.ToTable("Friendships");
+                });
+
+            modelBuilder.Entity("ChatProjects.UserService.Entities.UserProfile", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserName")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UserProfiles", (string)null);
                 });
 #pragma warning restore 612, 618
         }

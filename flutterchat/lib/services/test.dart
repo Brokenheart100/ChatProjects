@@ -1,11 +1,7 @@
 void main() {
   // 用工厂构造函数创建不同形状
-  final circle = Shape.create('circle', radius: 5);
-  final rectangle = Shape.create('rectangle', width: 4, height: 6);
 
   // 调用形状的方法
-  print('圆形面积: ${circle.calculateArea()}'); // 输出：圆形面积: 78.5
-  print('矩形面积: ${rectangle.calculateArea()}'); // 输出：矩形面积: 24
 }
 
 // 抽象形状类（基类）

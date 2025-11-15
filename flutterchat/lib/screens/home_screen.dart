@@ -21,7 +21,8 @@ enum MainPanelState {
 /// 首页屏幕组件
 /// 作为应用的主界面，包含左侧导航栏、会话列表/联系人列表、聊天面板等核心功能区域
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final AuthResponse? authResponse;
+  const HomeScreen({super.key, this.authResponse});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -200,19 +201,34 @@ class _HomeScreenState extends State<HomeScreen> {
     ContactGroup(name: '《高中美男团》', contacts: [contact1, contact2]), // 包含2个联系人
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    // --- 核心修改：优先从 widget 属性获取用户信息 ---
+    final initialAuthResponse = widget.authResponse ??
+        ModalRoute.of(context)?.settings.arguments as AuthResponse?;
+
+    if (initialAuthResponse != null) {
+      _currentUser = initialAuthResponse;
+      _fullAvatarUrl = _apiService.getFullAvatarUrl(_currentUser?.avatarUrl);
+    }
+  }
+
   /// 依赖变化时调用（如路由参数更新）
   /// 从登录页传递的参数中获取当前用户信息，并构建完整头像URL
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 获取路由参数（登录成功后传递的AuthResponse对象）
-    final args = ModalRoute.of(context)?.settings.arguments;
-    if (args is AuthResponse) {
-      setState(() {
-        _currentUser = args; // 保存当前用户信息
-        // 通过API服务构建完整的头像URL（结合MinIO地址和对象标识）
-        _fullAvatarUrl = _apiService.getFullAvatarUrl(_currentUser?.avatarUrl);
-      });
+    if (_currentUser == null) {
+      // 只有在 initState 未能获取到数据时才尝试
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is AuthResponse) {
+        setState(() {
+          _currentUser = args;
+          _fullAvatarUrl =
+              _apiService.getFullAvatarUrl(_currentUser?.avatarUrl);
+        });
+      }
     }
   }
 

@@ -28,6 +28,7 @@ namespace BKFluentChat
 
                 services.AddHostedService<ApplicationHostService>();
 
+                services.AddSingleton<IWindowService, WindowService>();
                 // Theme manipulation
                 services.AddSingleton<IThemeService, ThemeService>();
 

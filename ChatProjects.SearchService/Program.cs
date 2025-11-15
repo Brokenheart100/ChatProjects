@@ -25,7 +25,7 @@ namespace ChatProjects.SearchService
                 app.MapOpenApi();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseAuthorization();
 

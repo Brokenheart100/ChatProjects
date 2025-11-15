@@ -2,10 +2,10 @@
 
 #nullable disable
 
-namespace ChatProjects.UserService.Migrations
+namespace ChatProjects.AuthService.Migrations
 {
     /// <inheritdoc />
-    public partial class ConvertFriendRequestStatusToEnum1 : Migration
+    public partial class InitialCreate2 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -4,7 +4,7 @@ namespace ChatProjects.UserService.Entities;
 
 // 将这个类映射到 Identity 框架创建的 "AspNetUsers" 表
 [Table("AspNetUsers")]
-public class AppUser
+public class UserProfile
 {
     public string Id { get; set; } = null!;
     public string? UserName { get; set; }

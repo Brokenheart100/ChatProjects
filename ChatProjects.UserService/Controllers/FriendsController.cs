@@ -54,7 +54,7 @@ public class FriendsController(UserDbContext context, ILogger<FriendsController>
 
         // --- 2. 验证接收者是否存在 ---
         // 检查数据库中是否存在该接收者ID的用户
-        var recipientExists = await _context.Users.AnyAsync(u => u.Id == recipientId);
+        var recipientExists = await _context.UserProfiles.AnyAsync(u => u.Id == recipientId);
         if (!recipientExists)
         {
             return NotFound("目标用户不存在。");

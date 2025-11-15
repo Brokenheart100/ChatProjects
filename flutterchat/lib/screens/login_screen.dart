@@ -225,19 +225,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     text: '服务协议',
                     style: const TextStyle(color: Color(0xFF5B8EDC)), // 链接文字颜色
                     recognizer: TapGestureRecognizer() // 手势识别器（处理点击）
-                      ..onTap = () {
-                        print('服务协议 tapped'); // 点击事件（可跳转协议页面）
-                      },
+                      ..onTap = () {},
                   ),
                   const TextSpan(text: '和'),
                   // "QQ隐私保护指引"链接
                   TextSpan(
                     text: 'QQ隐私保护指引',
                     style: const TextStyle(color: Color(0xFF5B8EDC)), // 链接文字颜色
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () {
-                        print('隐私指引 tapped'); // 点击事件
-                      },
+                    recognizer: TapGestureRecognizer()..onTap = () {},
                   ),
                 ],
               ),
@@ -306,9 +301,7 @@ class _LoginScreenState extends State<LoginScreen> {
             if (value == 'register') {
               // 跳转到注册页面
               Navigator.pushNamed(context, '/register');
-            } else if (value == 'forgot_password') {
-              print('忘记密码 tapped'); // 忘记密码逻辑（暂未实现）
-            }
+            } else if (value == 'forgot_password') {}
           },
           // 菜单选项列表
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[

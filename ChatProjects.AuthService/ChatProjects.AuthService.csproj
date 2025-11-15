@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ChatProjects.Contracts\ChatProjects.Contracts.csproj" />
     <ProjectReference Include="..\ChatProjects.ServiceDefaults\ChatProjects.ServiceDefaults.csproj" />
   </ItemGroup>
 

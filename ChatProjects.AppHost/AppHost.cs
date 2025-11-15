@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Aspire.Hosting;
+using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -58,10 +59,12 @@ var orleans = builder.AddOrleans("my-orleans-cluster")
 
 var userService = builder.AddProject<Projects.ChatProjects_UserService>("userservice")
     .WithReference(rabbitmq)
+    .WaitFor(rabbitmq)
     .WithReference(userdb);
 
 var authService = builder.AddProject<Projects.ChatProjects_AuthService>("authservice")
     .WithReference(rabbitmq)
+    .WaitFor(rabbitmq)
     .WithReference(userdb);
 
 var fileService = builder.AddProject<Projects.ChatProjects_FileService>("fileservice")
@@ -78,6 +81,7 @@ builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
     .WithReference(rabbitmq)
     .WithReference(fileService)
     .WithReference(authService)
+    .WithReference(searchService)
     .WithReference(userService);
 
 

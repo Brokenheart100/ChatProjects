@@ -1,6 +1,7 @@
 using ChatProjects.AuthService.Data;
 using ChatProjects.AuthService.Extensions;
 using ChatProjects.AuthService.Services;
+using ChatProjects.Contracts.Events;
 using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -15,11 +16,9 @@ builder.AddServiceDefaults();
 builder.AddNpgsqlDbContext<AuthDbContext>("userdb");
 
 
-//builder.Services.AddDbContext<AuthDbContext>(options =>
-//    options.UseNpgsql(builder.Configuration.GetConnectionString("userdb")));
 
 // ʹ�����Ǵ�������չ������ע�� Identity ��صķ���
-builder.Services.AddIdentityServices();
+builder.Services.AddIdentityServices(builder.Configuration);
 
 // ע�������Զ���� TokenService���Ա��� Controller ��ע��
 builder.Services.AddScoped<TokenService>();
@@ -42,6 +41,16 @@ builder.Services.AddSwaggerGen();
 //    opts.UseRabbitMqUsingNamedConnection("messaging").AutoProvision();
 //    opts.PublishAllMessages().ToRabbitExchange("file-exchange");
 //});
+
+builder.Host.UseWolverine(opts =>
+{
+    // 1. 使用 RabbitMQ 作为传输
+    opts.UseRabbitMqUsingNamedConnection("messaging").AutoProvision();
+
+    // 2. 将所有发布的消息路由到一个名为 "user-events" 的交换机
+    //opts.PublishAllMessages().ToRabbitExchange("user-events");
+    opts.PublishMessage<UserRegistered>().ToRabbitExchange("user-events", e => e.ExchangeType = ExchangeType.Fanout);
+});
 
 // --- 2. ����Ӧ�ó��� ---
 var app = builder.Build();
@@ -75,20 +84,16 @@ app.Use(async (context, next) =>
 });
 
 
-// ���� HTTPS �ض���
 app.UseHttpsRedirection();
-
-// ������Ȩ�м��
+app.UseAuthentication();
 app.UseAuthorization();
 
 await ApplyMigrationsAsync(app.Services);
 app.MapControllers();
-// --- 4. ����Ӧ�� ---
 app.Run();
 
 
 
-// --- ��������������Ӧ�����ݿ�Ǩ�� ---
 async Task ApplyMigrationsAsync(IServiceProvider services)
 {
     // ����һ���µ�����ע���������԰�ȫ�ػ�ȡ����

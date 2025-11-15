@@ -39,6 +39,27 @@ namespace BKFluentChat.ViewModels.Pages
             LoadContactGroups();
         }
 
+        [RelayCommand]
+        private void CreateGroup()
+        {
+            // TODO: 在这里实现创建群聊的逻辑，例如弹出一个新的对话框
+            Debug.WriteLine("创建群聊命令被执行！");
+        }
+
+        [RelayCommand]
+        private void AddFriend()
+        {
+            // TODO: 在这里实现导航到“添加好友”页面的逻辑
+            Debug.WriteLine("加好友/群命令被执行！");
+        }
+
+        [RelayCommand]
+        private void SendFile()
+        {
+            // TODO: 在这里实现闪传文件的逻辑
+            Debug.WriteLine("闪传文件命令被执行！");
+        }
+
         // 响应用户点击的命令
         [RelayCommand]
         private void SelectContact(Contact contact)

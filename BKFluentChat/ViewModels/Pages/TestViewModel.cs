@@ -1,4 +1,6 @@
 ﻿using BKFluentChat.Models;
+using BKFluentChat.Services;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -11,34 +13,45 @@ namespace BKFluentChat.ViewModels.Pages
 {
     public partial class TestViewModel : ObservableObject
     {
+        // --- 2. 核心新增：添加一个私有字段来存储 logger 实例 ---
+        private readonly ILogger<TestViewModel> _logger;
+        // ----------------------------------------------------
+        private readonly IWindowService _windowService;
         [ObservableProperty]
         private ObservableCollection<ContactGroup> _contactGroups;
 
-        // 新增属性：用于存储被选中项的名称，并驱动右侧UI
-        [ObservableProperty]
-        private string _selectedItemName;
-
         [ObservableProperty]
         private Contact _selectedContact;
-        public TestViewModel()
+
+        // 3. 核心修改：更新构造函数以接收 ILogger
+        public TestViewModel(ILogger<TestViewModel> logger,IWindowService windowService)
         {
+            _logger = logger;
+            _windowService = windowService;
             LoadMockData();
+
         }
 
-        // 新增命令：当任何可点击的项被点击时，此命令将被调用
-        //[RelayCommand]
-        //private void SelectItem(object item)
-        //{
-        //    // 判断被点击项的类型，并提取其 Name 属性
-        //    if (item is ContactGroup group)
-        //    {
-        //        SelectedItemName = group.Name;
-        //    }
-        //    else if (item is Contact contact)
-        //    {
-        //        SelectedItemName = contact.Name;
-        //    }
-        //}
+        [RelayCommand]
+        private void CreateGroup()
+        {
+            // TODO: 在这里实现创建群聊的逻辑，例如弹出一个新的对话框
+            Debug.WriteLine("创建群聊命令被执行！");
+        }
+
+        [RelayCommand]
+        private void AddFriend()
+        {
+            _windowService.ShowSearchWindow();
+            _logger.LogInformation("AddFriend command executed.");
+        }
+
+        [RelayCommand]
+        private void SendFile()
+        {
+            // TODO: 在这里实现闪传文件的逻辑
+            Debug.WriteLine("闪传文件命令被执行！");
+        }
         [RelayCommand]
         private void SelectItem(object item)
         {
