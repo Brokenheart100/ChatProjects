@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart'; // 网络请求库，用于发送HTTP请求
 import 'package:flutterchat/models/auth_response.dart'; // 认证响应数据模型
+import 'package:flutterchat/models/friend_request.dart';
 import 'package:flutterchat/models/user_search_result.dart';
 import 'package:flutterchat/services/logger_service.dart'; // 日志服务，用于记录系统日志
 import 'package:image_picker/image_picker.dart'; // 图片选择库，用于获取本地图片文件
@@ -65,6 +66,7 @@ class ApiService {
       },
     ));
   }
+
   Future<List<UserSearchResult>> searchUsers(String query) async {
     // --- 1. 添加日志：记录方法被调用和参数 ---
     logger.i('开始搜索用户，查询关键词: "$query"');
@@ -342,8 +344,18 @@ class ApiService {
   /// 用户登出
   /// 移除本地存储的认证token
   Future<void> logout() async {
+    logger.i('正在执行注销操作，清除本地 Token...');
     final prefs = await SharedPreferences.getInstance();
+
+    // 移除保存的 Token
     await prefs.remove(_tokenKey);
+
+    logger.i('本地 Token 已清除。');
+
+    // (可选，但推荐) 同时清除 AccountService 中保存的账户信息
+    // 这需要您在 AccountService 中也添加一个 clearAllAccounts 方法
+    // final accountService = AccountService();
+    // await accountService.clearAllAccounts();
   }
 
   Future<AuthResponse> getSession() async {
@@ -380,5 +392,59 @@ class ApiService {
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
+  }
+
+  Future<List<UserSearchResult>> getFriends() async {
+    logger.i('正在获取好友列表...');
+    try {
+      // API 调用需要登录，拦截器会自动附加 Token
+      final response =
+          await _dio.get('/gateway/friends'); // 假设网关路由是 /gateway/friends
+
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> jsonList = response.data;
+        final friends =
+            jsonList.map((json) => UserSearchResult.fromJson(json)).toList();
+        logger.i('成功获取到 ${friends.length} 个好友。');
+        return friends;
+      } else {
+        throw '获取好友列表失败';
+      }
+    } on DioException catch (e) {
+      logger.e('获取好友列表失败！', error: e, stackTrace: e.stackTrace);
+      throw _handleError(e, "getFriends");
+    }
+  }
+
+  // --- 核心新增 ---
+  Future<List<FriendRequest>> getPendingFriendRequests() async {
+    final response = await _dio.get('/gateway/friends/requests/pending');
+    final List<dynamic> jsonList = response.data;
+    return jsonList.map((json) => FriendRequest.fromJson(json)).toList();
+  }
+
+  Future<void> acceptFriendRequest(String requestId) async {
+    await _dio.post('/gateway/friends/requests/$requestId/accept');
+  }
+
+  Future<void> rejectFriendRequest(String requestId) async {
+    await _dio.post('/gateway/friends/requests/$requestId/reject');
+  }
+
+  Future<int> getPendingFriendRequestsCount() async {
+    try {
+      final response =
+          await _dio.get('/gateway/friends/requests/pending/count');
+      if (response.statusCode == 200 && response.data != null) {
+        // 从返回的 JSON 对象 { "count": 3 } 中解析出 count 的值
+        final count = response.data['count'] as int;
+        logger.i('获取到 $count 个待处理的好友请求。');
+        return count;
+      }
+      return 0;
+    } on DioException {
+      // 发生错误时返回 0，避免 UI 崩溃
+      return 0;
+    }
   }
 }

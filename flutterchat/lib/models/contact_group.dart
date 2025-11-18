@@ -7,7 +7,7 @@ class ContactGroup {
   ContactGroup({required this.name, required this.contacts});
 
   // Calculate online/total counts based on the contacts list
-  int get onlineCount => contacts.where((c) => c.statusText != '离线').length;
+  int get onlineCount => contacts.length;
   int get totalCount => contacts.length;
 
   String get countDisplay => '$onlineCount/$totalCount';

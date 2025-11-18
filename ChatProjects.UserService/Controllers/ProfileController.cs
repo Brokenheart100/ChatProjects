@@ -41,7 +41,7 @@ public class ProfileController : ControllerBase
             return NotFound("未找到用户");
         }
 
-        var profileDto = new UserProfileDto(user.Id, user.UserName!, user.Email!, user.DisplayName);
+        var profileDto = new UserProfileDto(user.UserId, user.UserName!, user.Email!, user.DisplayName);
         return Ok(profileDto);
     }
 
@@ -83,7 +83,7 @@ public class ProfileController : ControllerBase
         }
 
         // 通常只返回公开信息，而不是所有信息
-        var publicProfile = new UserProfileDto(user.Id, user.UserName!, user.Email!, user.DisplayName);
+        var publicProfile = new UserProfileDto(user.UserId, user.UserName!, user.Email!, user.DisplayName);
         return Ok(publicProfile);
     }
 }

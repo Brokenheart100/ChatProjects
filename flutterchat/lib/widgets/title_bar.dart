@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
 class CustomTitleBar extends StatelessWidget implements PreferredSizeWidget {
-  const CustomTitleBar({super.key});
+  const CustomTitleBar({super.key, required String avatarUrl});
 
   @override
   Widget build(BuildContext context) {

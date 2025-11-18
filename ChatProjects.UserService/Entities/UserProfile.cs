@@ -6,11 +6,10 @@ namespace ChatProjects.UserService.Entities;
 [Table("AspNetUsers")]
 public class UserProfile
 {
-    public string Id { get; set; } = null!;
+    public string UserId { get; set; } = null!;
     public string? UserName { get; set; }
     public string? Email { get; set; }
-
-    // --- 新增的个人资料字段 ---
+    public string?  AvatarUrl { get; set; }
     public string? DisplayName { get; set; }
     // 可以在这里添加更多字段，如 AvatarUrl, Bio, etc.
 }

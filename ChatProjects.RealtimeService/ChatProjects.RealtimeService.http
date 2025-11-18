@@ -1,0 +1,6 @@
+@ChatProjects.RealtimeService_HostAddress = http://localhost:5062
+
+GET {{ChatProjects.RealtimeService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 
 // 左侧导航栏组件，继承无状态组件StatelessWidget
 class LeftNavRail extends StatelessWidget {
@@ -7,6 +8,7 @@ class LeftNavRail extends StatelessWidget {
   // 导航项选中状态变化时的回调函数（参数为新选中的索引）
   final ValueChanged<int> onDestinationSelected;
   final String? avatarUrl;
+  final VoidCallback? onLogout;
 
   // 构造函数：接收选中索引和选中变化回调，均为必选参数
   const LeftNavRail({
@@ -14,6 +16,7 @@ class LeftNavRail extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     this.avatarUrl,
+    this.onLogout,
   });
 
   // 构建组件UI
@@ -29,11 +32,9 @@ class LeftNavRail extends StatelessWidget {
           // 顶部间距（20像素）
           const SizedBox(height: 20),
           // 用户头像：圆形，半径20，使用本地资源图片
-          CircleAvatar(
+          CustomCircleAvatar(
+            avatarUrl: avatarUrl,
             radius: 20,
-            backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
-                ? NetworkImage(avatarUrl!)
-                : const AssetImage('assets/Image/30.jpg') as ImageProvider,
           ),
           // 头像与下方导航图标之间的间距（20像素）
           const SizedBox(height: 20),
@@ -41,6 +42,11 @@ class LeftNavRail extends StatelessWidget {
           _buildNavIcon(Icons.chat_bubble, 0),
           // 构建导航图标：联系人图标（索引1）
           _buildNavIcon(Icons.people, 1),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white54, size: 28),
+            tooltip: '注销', // 鼠标悬停时显示的提示文字
+            onPressed: onLogout, // 点击时调用我们传入的回调
+          ),
           // 构建导航图标：星标图标（索引2，带有通知标记）
           _buildNavIcon(Icons.star, 2, hasNotification: true),
           // 构建导航图标：标签图标（索引3）

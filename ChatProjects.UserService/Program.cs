@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using ChatProjects.UserService.Services;
 using Wolverine;
 using Wolverine.RabbitMQ;
 
@@ -17,7 +18,6 @@ builder.AddNpgsqlDbContext<UserDbContext>("userdb");
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["SecretKey"];
 
-// ����ϵͳĬ�ϵ���֤����ѯ������ "Bearer"
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -68,6 +68,12 @@ builder.Host.UseWolverine(opts =>
 
     // ---------------------------------------------------
 });
+
+builder.Services.AddHttpClient<RealtimeServiceApiClient>(client =>
+{
+    client.BaseAddress = new Uri("http://realtimeservice");
+});
+
 
 // --- 2. ����Ӧ�� ---
 var app = builder.Build();

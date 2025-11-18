@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutterchat/models/auth_response.dart';
+import 'package:flutterchat/services/account_service.dart';
 import 'package:flutterchat/services/api_service.dart';
 import 'package:flutterchat/services/logger_service.dart';
 import 'package:window_manager/window_manager.dart';
@@ -27,21 +28,25 @@ void main() async {
     await windowManager.focus();
   });
   final apiService = ApiService();
+  final accountService = AccountService();
   String initialRoute = '/login'; // 默认路由为登录页
   AuthResponse? authResponse;
   try {
-    // 3. 使用 await 来“暂停”执行，直到 getSession() 完成
-    logger.i("main: 正在尝试自动登录...");
-    authResponse = await apiService.getSession();
+    // 1. 查找被标记为“自动登录”的账户
+    final accountToAutoLogin = await accountService.getAccountForAutoLogin();
 
-    // 4. 如果上面的 await 没有抛出异常，说明成功了，我们才修改路由
-    initialRoute = '/home';
-    logger.i("main: 自动登录成功！初始路由设置为 /home");
+    if (accountToAutoLogin != null) {
+      logger.i("main: 找到自动登录账户: ${accountToAutoLogin.username}");
+      // 2. 使用该账户的 Token 来恢复会话
+      //    我们需要先将 token 保存到 ApiService 能读取的地方
+      await apiService.saveToken(accountToAutoLogin.token);
+      authResponse = await apiService.getSession();
+      initialRoute = '/home';
+      logger.i("main: 自动登录成功！");
+    }
   } catch (e) {
-    // 5. 如果 getSession 失败，catch 块会捕获异常
-    initialRoute = '/login';
-    logger.w("main: 自动登录失败，初始路由设置为 /login. 错误: $e");
-    // 这里我们什么都不做，让应用正常进入登录页
+    logger.w("main: 自动登录失败. 错误: $e");
+    // 失败则保持默认路由 /login
   }
   runApp(MyApp(
     initialRoute: initialRoute,

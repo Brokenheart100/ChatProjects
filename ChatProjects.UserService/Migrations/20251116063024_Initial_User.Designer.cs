@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ChatProjects.UserService.Migrations
 {
     [DbContext(typeof(UserDbContext))]
-    [Migration("20251114153041_InitialCreate_UserService")]
-    partial class InitialCreate_UserService
+    [Migration("20251116063024_Initial_User")]
+    partial class Initial_User
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -48,8 +48,7 @@ namespace ChatProjects.UserService.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SenderId", "RecipientId")
-                        .IsUnique();
+                    b.HasIndex("SenderId", "RecipientId");
 
                     b.ToTable("FriendRequests");
                 });
@@ -81,7 +80,10 @@ namespace ChatProjects.UserService.Migrations
 
             modelBuilder.Entity("ChatProjects.UserService.Entities.UserProfile", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AvatarUrl")
                         .HasColumnType("text");
 
                     b.Property<string>("DisplayName")
@@ -90,10 +92,13 @@ namespace ChatProjects.UserService.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("text");
 
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
                     b.Property<string>("UserName")
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("UserId");
 
                     b.ToTable("UserProfiles", (string)null);
                 });

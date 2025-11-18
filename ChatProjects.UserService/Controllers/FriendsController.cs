@@ -2,6 +2,7 @@
 using ChatProjects.Contracts.Dtos;
 using ChatProjects.UserService.Data;
 using ChatProjects.UserService.Entities;
+using ChatProjects.UserService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +25,7 @@ public class FriendsController(UserDbContext context, ILogger<FriendsController>
     private readonly UserDbContext _context = context;
     // 日志组件：记录操作日志和异常信息
     private readonly ILogger<FriendsController> _logger = logger;
-
+    private readonly RealtimeServiceApiClient _realtimeApiClient;
     /// <summary>
     /// 发送好友请求接口
     /// 接口路径：POST /api/friends/requests
@@ -54,7 +55,7 @@ public class FriendsController(UserDbContext context, ILogger<FriendsController>
 
         // --- 2. 验证接收者是否存在 ---
         // 检查数据库中是否存在该接收者ID的用户
-        var recipientExists = await _context.UserProfiles.AnyAsync(u => u.Id == recipientId);
+        var recipientExists = await _context.UserProfiles.AnyAsync(u => u.UserId== recipientId);
         if (!recipientExists)
         {
             return NotFound("目标用户不存在。");
@@ -121,78 +122,230 @@ public class FriendsController(UserDbContext context, ILogger<FriendsController>
         return Ok("好友请求已发送");
     }
 
-    /// <summary>
-    /// 接受好友请求接口
-    /// 接口路径：POST /api/friends/requests/{requestId}/accept
-    /// </summary>
-    /// <param name="requestId">要接受的好友请求ID</param>
-    /// <returns>处理结果（成功/失败信息）</returns>
-    [HttpPost("requests/{requestId}/accept")]
+    // 文件: ChatProjects.UserService/Controllers/FriendsController.cs
+
+    // (可以定义一些简单的自定义异常类，让代码更清晰)
+    public class FriendRequestValidationException(string message) : Exception(message);
+    public class NotAuthorizedException(string message) : Exception(message);
+
+
+    [HttpPost("requests/{requestId:guid}/accept")]
     public async Task<IActionResult> AcceptRequest(Guid requestId)
     {
-        // 获取当前登录用户ID（请求的接收者）
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (currentUserId == null) return Unauthorized();
 
-        // 开启数据库事务：确保"更新请求状态"和"创建好友关系"两个操作原子性（要么都成功，要么都失败）
-        using var transaction = await _context.Database.BeginTransactionAsync();
+        var strategy = _context.Database.CreateExecutionStrategy();
 
         try
         {
-            // 1. 根据ID查询好友请求
-            var request = await _context.FriendRequests.FindAsync(requestId);
-
-            // 2. 验证请求合法性
-            if (request == null)
+            // --- 1. 在外部使用 try-catch 包裹 ExecuteAsync ---
+            await strategy.ExecuteAsync(async () =>
             {
-                return NotFound("好友请求不存在。");
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                try
+                {
+                    var request = await _context.FriendRequests.FindAsync(requestId);
+
+                    // --- 2. 在 lambda 内部，将 return 改为 throw ---
+                    if (request == null)
+                    {
+                        // 抛出异常来终止操作
+                        throw new FriendRequestValidationException("好友请求不存在。");
+                    }
+                    if (request.RecipientId != currentUserId)
+                    {
+                        throw new NotAuthorizedException("无权操作此好友请求。");
+                    }
+                    if (request.Status != FriendRequestStatus.Pending)
+                    {
+                        throw new FriendRequestValidationException("此请求已被处理。");
+                    }
+                    // ------------------------------------------
+
+                    // (后续的数据库操作保持不变)
+                    request.Status = FriendRequestStatus.Accepted;
+                    request.UpdatedAt = DateTime.UtcNow;
+
+                    var user1Id = string.Compare(request.SenderId, request.RecipientId) < 0 ? request.SenderId : request.RecipientId;
+                    var user2Id = string.Compare(request.SenderId, request.RecipientId) < 0 ? request.RecipientId : request.SenderId;
+
+                    if (!await _context.Friendships.AnyAsync(f => f.User1Id == user1Id && f.User2Id == user2Id))
+                    {
+                        var friendship = new Friendship { /* ... */ Id = Guid.NewGuid(), User1Id = user1Id, User2Id = user2Id, BecameFriendsAt = DateTime.UtcNow };
+                        _context.Friendships.Add(friendship);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("Friend request {RequestId} accepted.", requestId);
+                }
+                catch
+                {
+                    // 内部的 catch 只负责回滚和重新抛出
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+        catch (FriendRequestValidationException ex)
+        {
+            // --- 3. 在外部捕获业务异常，并转换为对应的 HTTP 响应 ---
+            // 根据异常消息，可以返回 NotFound 或 BadRequest
+            if (ex.Message.Contains("不存在"))
+            {
+                return NotFound(new { Message = ex.Message });
             }
-            if (request.RecipientId != currentUserId)
-            {
-                // 防止恶意操作：用户只能接受发给自己的请求
-                return Forbid("无权操作此好友请求。");
-            }
-            if (request.Status != FriendRequestStatus.Pending)
-            {
-                // 避免重复处理：已接受/拒绝的请求不能再次处理
-                return BadRequest("此请求已被处理。");
-            }
-
-            // 3. 更新请求状态为"已接受"
-            request.Status = FriendRequestStatus.Accepted;
-            _context.FriendRequests.Update(request);
-
-            // 4. 创建好友关系记录
-            // 再次对用户ID排序，保证与SendRequest中逻辑一致（User1Id < User2Id）
-            var user1Id = string.Compare(request.SenderId, request.RecipientId) < 0 ? request.SenderId : request.RecipientId;
-            var user2Id = string.Compare(request.SenderId, request.RecipientId) < 0 ? request.RecipientId : request.SenderId;
-
-            var friendship = new Friendship
-            {
-                Id = Guid.NewGuid(), // 生成唯一标识
-                User1Id = user1Id,
-                User2Id = user2Id,
-                BecameFriendsAt = DateTime.UtcNow // 记录成为好友的UTC时间
-            };
-            _context.Friendships.Add(friendship);
-
-            // 5. 保存所有更改（更新请求+新增关系）
-            await _context.SaveChangesAsync();
-
-            // 6. 提交事务：所有操作成功后确认写入数据库
-            await transaction.CommitAsync();
-
-            // TODO：通过消息总线通知请求发送方"好友请求已被接受"
-
-            return Ok("已添加好友。");
+            return BadRequest(new { Message = ex.Message });
+        }
+        catch (NotAuthorizedException ex)
+        {
+            return Forbid(); // 直接返回 403 Forbidden
         }
         catch (Exception ex)
         {
-            // 若发生任何异常，回滚事务：撤销所有未提交的更改
-            await transaction.RollbackAsync();
-            // 记录异常日志（包含请求ID和当前用户ID，便于排查）
-            _logger.LogError(ex, "接受好友请求时发生错误。requestId:{RequestId}, currentUserId:{CurrentUserId}", requestId, currentUserId);
-            return StatusCode(500, "处理请求时发生服务器内部错误。");
+            // 捕获所有其他异常（如数据库连接失败），返回 500
+            _logger.LogError(ex, "An unhandled exception occurred while accepting friend request {RequestId}.", requestId);
+            return StatusCode(500, new { Message = "处理请求时发生内部错误。" });
         }
+        // -----------------------------------------------------------------
+
+        // 如果没有任何异常，说明操作成功
+        return Ok(new { Message = "好友添加成功" });
+    }
+
+
+    /// <summary>
+    /// 获取当前登录用户的所有好友
+    /// </summary>
+    [HttpGet] // GET /api/friends
+    public async Task<IActionResult> GetMyFriends()
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserId == null) return Unauthorized();
+
+        try
+        {
+            // 1. 在 Friendships 表中查找所有包含当前用户 ID 的记录
+            var friendships = await _context.Friendships
+                .Where(f => f.User1Id == currentUserId || f.User2Id == currentUserId)
+                .ToListAsync();
+
+            // 2. 从这些关系中，提取出所有好友的 ID
+            var friendIds = friendships
+                .Select(f => f.User1Id == currentUserId ? f.User2Id : f.User1Id)
+                .ToList();
+
+            if (!friendIds.Any())
+            {
+                // 如果没有任何好友，返回一个空列表
+                return Ok(new List<UserSearchResultDto>());
+            }
+
+            // 3. 使用好友 ID 列表，去 UserProfiles 表中一次性查询出所有好友的详细信息
+            var friends = await _context.UserProfiles
+                .Where(up => friendIds.Contains(up.UserId))
+                .Select(up => new UserSearchResultDto( // 复用我们已有的 DTO
+                    up.UserId,
+                    up.UserName,
+                    up.AvatarUrl,
+                    "IsFriend" // 明确地告诉前端这些人已经是好友
+                ))
+                .ToListAsync();
+
+            _logger.LogInformation("User {UserId} fetched {FriendCount} friends.", currentUserId, friends.Count);
+
+            return Ok(friends);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while fetching friends for user {UserId}", currentUserId);
+            return StatusCode(500, new { Message = "获取好友列表时发生内部错误。" });
+        }
+    }
+
+
+    /// <summary>
+    /// 获取当前登录用户收到的所有待处理的好友请求
+    /// </summary>
+    [HttpGet("requests/pending")] // GET /api/friends/requests/pending
+    public async Task<IActionResult> GetPendingRequests()
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserId == null) return Unauthorized();
+
+        // 查找所有发给当前用户，且状态为 Pending 的请求
+        var requests = await _context.FriendRequests
+            .Where(r => r.RecipientId == currentUserId && r.Status == FriendRequestStatus.Pending)
+            .ToListAsync();
+
+        // 为了在 UI 上显示发送者的信息（名字、头像），我们需要 JOIN UserProfiles 表
+        var senderIds = requests.Select(r => r.SenderId).ToList();
+
+        var senders = await _context.UserProfiles
+            .Where(up => senderIds.Contains(up.UserId))
+            .ToDictionaryAsync(up => up.UserId); // 转换为字典以便快速查找
+
+        // 组装成一个更丰富的 DTO 返回给前端
+        var dtos = requests.Select(r => new FriendRequestDto(
+            r.Id,
+            r.SenderId,
+            senders.GetValueOrDefault(r.SenderId)?.UserName ?? "未知用户",
+            senders.GetValueOrDefault(r.SenderId)?.AvatarUrl,
+            r.CreatedAt
+        )).ToList();
+
+        return Ok(dtos);
+    }
+    /// <summary>
+    /// 拒绝一个好友请求
+    /// </summary>
+    [HttpPost("requests/{requestId:guid}/reject")]
+    public async Task<IActionResult> RejectRequest(Guid requestId)
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserId == null) return Unauthorized();
+
+        var request = await _context.FriendRequests.FindAsync(requestId);
+
+        if (request == null)
+            return NotFound(new { Message = "好友请求不存在。" });
+
+        // 只能拒绝发给自己的请求
+        if (request.RecipientId != currentUserId)
+            return Forbid();
+
+        if (request.Status != FriendRequestStatus.Pending)
+            return BadRequest(new { Message = "此请求已被处理。" });
+
+        request.Status = FriendRequestStatus.Rejected;
+        request.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("User {UserId} rejected friend request {RequestId}", currentUserId, requestId);
+
+        return Ok(new { Message = "已拒绝该好友请求" });
+    }
+
+    /// <summary>
+    /// 获取当前用户收到的待处理好友请求的数量
+    /// </summary>
+    [HttpGet("requests/pending/count")] // GET /api/friends/requests/pending/count
+    public async Task<IActionResult> GetPendingRequestsCount()
+    {
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserId == null) return Unauthorized();
+
+        // 直接在数据库中进行计数，效率最高
+        var count = await _context.FriendRequests
+            .CountAsync(r => r.RecipientId == currentUserId && r.Status == FriendRequestStatus.Pending);
+
+        _logger.LogInformation("User {UserId} has {Count} pending friend requests.", currentUserId, count);
+
+        // 返回一个简单的 JSON 对象，例如 { "count": 3 }
+        return Ok(new { count });
     }
 }

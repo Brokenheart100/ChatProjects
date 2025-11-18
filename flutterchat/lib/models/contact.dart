@@ -1,35 +1,41 @@
-import 'package:flutter/material.dart';
-
+/// 代表一个联系人的UI模型。
+/// 它的数据源通常来自于API返回的模型（如 UserSearchResult），经过转换而来。
 class Contact {
-  final String avatar;
-  final String name;
-  final String qqNumber;
-  final String statusText;
-  final IconData statusIcon;
-  final Color statusIconColor;
-  final String gender;
-  final int age;
-  final String birthday;
-  final String constellation;
+  final String id;
+  final String name; // 对应 username
+  final String? avatarUrl; // 完整的、可直接用于 NetworkImage 的 URL
+
+  // remark 通常是用户自己设置的，可以与 name 不同
   final String remark;
-  final String groupName;
-  final String signature;
+
+  // --- 为详情页预留的可空字段 ---
+  // 当后端API返回更多信息时，可以填充这些字段
+  final String? qqNumber;
+  final String? statusText;
+  final String? gender;
+  final int? age;
+  final String? birthday;
+  final String? constellation;
+  final String? signature;
+  final String? groupName;
   final List<String> photos;
+  // --------------------------------
 
   Contact({
-    required this.avatar,
+    required this.id,
     required this.name,
-    required this.qqNumber,
-    required this.statusText,
-    required this.statusIcon,
-    required this.statusIconColor,
-    required this.gender,
-    required this.age,
-    required this.birthday,
-    required this.constellation,
-    required this.remark,
-    required this.groupName,
-    required this.signature,
-    required this.photos,
+    this.avatarUrl,
+    this.remark = '',
+
+    // 构造函数中的可选参数
+    this.qqNumber,
+    this.statusText,
+    this.gender,
+    this.age,
+    this.birthday,
+    this.constellation,
+    this.signature,
+    this.groupName,
+    this.photos = const [], // 默认为一个空的列表
   });
 }

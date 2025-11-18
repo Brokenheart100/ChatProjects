@@ -37,6 +37,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatProjects.Grains.Interfa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatProjects.OrleansSilo", "ChatProjects.OrleansSilo\ChatProjects.OrleansSilo.csproj", "{DBDF2513-BC47-449D-8E15-F0F7E49A4AAB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChatProjects.RealtimeService", "ChatProjects.RealtimeService\ChatProjects.RealtimeService.csproj", "{C10A85A0-794B-13A4-8B14-3B6F470E4486}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -251,6 +253,18 @@ Global
 		{DBDF2513-BC47-449D-8E15-F0F7E49A4AAB}.Release|x64.Build.0 = Release|Any CPU
 		{DBDF2513-BC47-449D-8E15-F0F7E49A4AAB}.Release|x86.ActiveCfg = Release|Any CPU
 		{DBDF2513-BC47-449D-8E15-F0F7E49A4AAB}.Release|x86.Build.0 = Release|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Debug|x64.Build.0 = Debug|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Debug|x86.Build.0 = Debug|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Release|x64.ActiveCfg = Release|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Release|x64.Build.0 = Release|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Release|x86.ActiveCfg = Release|Any CPU
+		{C10A85A0-794B-13A4-8B14-3B6F470E4486}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

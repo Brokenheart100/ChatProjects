@@ -1,6 +1,10 @@
 import 'package:flutter/gestures.dart'; // 手势识别库，用于处理复杂手势（如富文本链接点击）
 import 'package:flutter/material.dart'; // Flutter核心UI组件库
-import 'package:flutterchat/widgets/placeholder_avatar.dart'; // 自定义占位头像组件
+import 'package:flutterchat/models/saved_account.dart';
+import 'package:flutterchat/services/account_service.dart';
+import 'package:flutterchat/services/logger_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:window_manager/window_manager.dart'; // 窗口管理库（用于桌面应用窗口控制，如最小化、关闭）
 import '../services/api_service.dart'; // 导入API服务，用于调用登录接口
 
@@ -15,32 +19,75 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _apiService = ApiService(); // API服务实例，用于调用登录接口
+  final _accountService = AccountService();
   bool _isLoading = false; // 登录按钮加载状态（true表示正在请求中，禁用重复点击）
   bool _isChecked = false; // 服务协议复选框状态（true表示已同意）
   final _usernameController = TextEditingController(); // 用户名输入控制器（获取用户输入的用户名）
   final _passwordController = TextEditingController(); // 密码输入控制器（获取用户输入的密码）
 
-  /// 登录逻辑处理
-  /// 1. 检查是否正在加载，防止重复提交
-  /// 2. 调用API服务的登录方法
-  /// 3. 登录成功则跳转到首页，失败则显示错误提示
+  List<SavedAccount> _savedAccounts = [];
+  SavedAccount? _selectedAccount;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedAccounts();
+  }
+
+// 加载本地已保存的账户
+  Future<void> _loadSavedAccounts() async {
+    final accounts = await _accountService.loadSavedAccounts();
+    setState(() {
+      _savedAccounts = accounts;
+      // 默认选中第一个账户，如果没有则为 null
+      _selectedAccount = accounts.isNotEmpty ? accounts.first : null;
+    });
+  }
+
   Future<void> _login() async {
-    if (_isLoading) return; // 如果正在加载，直接返回（防止重复点击）
-    setState(() => _isLoading = true); // 开始加载，更新UI状态
+    // --- 守卫 1: 只检查 isLoading ---
+    if (_isLoading) return;
+
+    // --- 守卫 2: 检查用户名和密码是否为空 ---
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showSnackBar('请输入用户名和密码', isError: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
 
     try {
-      // 调用API服务的登录方法，传入用户名和密码
+      // --- 核心修复：使用 _usernameController.text 获取用户名 ---
       final authResponse = await _apiService.login(
         username: _usernameController.text,
         password: _passwordController.text,
       );
-      // 登录成功：替换当前页面为首页，并传递用户信息（authResponse）
+      // ---------------------------------------------------
+
+      // (可选，但推荐保留) 登录成功后，依然可以保存账户信息，为下次使用新 UI 做准备
+      final accountToSave = SavedAccount(
+        username: authResponse.username,
+        token: authResponse.token,
+        avatarUrl: authResponse.avatarUrl,
+        autoLoginEnabled: false, // 默认不开启自动登录
+      );
+      await _accountService.saveOrUpdateAccount(accountToSave);
+
+      if (!mounted) return;
+      _passwordController.clear();
+      _usernameController.clear(); // 登录成功后也清空用户名
       Navigator.pushReplacementNamed(context, '/home', arguments: authResponse);
-    } catch (e) {
-      // 登录失败：显示错误提示（e为错误信息）
-      _showSnackBar(e.toString(), isError: true);
+    } catch (e, stackTrace) {
+      // 添加 stackTrace 以便获得更详细的日志
+      logger.e(
+        '登录失败！',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (mounted) {
+        _showSnackBar(e.toString(), isError: true);
+      }
     } finally {
-      // 无论成功/失败，最终都重置加载状态（需判断页面是否已挂载，避免 setState 报错）
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -88,15 +135,9 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               _buildTitleBar(), // 自定义标题栏（包含设置、最小化、关闭按钮）
-              const SizedBox(height: 30),
-              // 显示"QQ"文字的占位头像（模拟QQ登录界面Logo）
-              const PlaceholderAvatar(
-                text: 'QQ', // 头像显示的文字
-                radius: 45, // 头像半径
-                fontSize: 32, // 文字大小
-              ),
-              const SizedBox(height: 30),
-              // 用户名输入框（带下拉箭头）
+              const SizedBox(height: 15),
+              _buildMultiAccountDisplay(),
+              const SizedBox(height: 15),
               _buildInputField(_usernameController, '输入Username',
                   hasDropdown: true),
               const SizedBox(height: 15),
@@ -117,6 +158,273 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMultiAccountDisplay() {
+    return Column(
+      children: [
+        // 1. 主头像 和 “多账号登录”标签
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            // 主头像
+            CustomCircleAvatar(
+              avatarUrl: _selectedAccount?.avatarUrl,
+              radius: 45,
+            ),
+            // “多账号登录”标签
+            Positioned(
+              top: -10,
+              right: -40,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('多账号登录',
+                    style: TextStyle(color: Colors.white, fontSize: 12)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // 2. 用户名
+        if (_selectedAccount != null)
+          Text(
+            _selectedAccount!.username,
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+          ),
+        const SizedBox(height: 20),
+
+        // 3. 自动登录复选框
+        if (_selectedAccount != null) _buildAutoLoginCheckbox(),
+
+        const SizedBox(height: 30),
+
+        // 4. 横向滚动的小头像列表
+        _buildAccountAvatarList(),
+      ],
+    );
+  }
+
+  Widget _buildAutoLoginCheckbox() {
+    return GestureDetector(
+      onTap: () async {
+        final newValue = !_selectedAccount!.autoLoginEnabled;
+        await _accountService.updateAutoLogin(_selectedAccount!, newValue);
+        // 重新加载所有账户以更新状态（确保其他账户的自动登录被取消）
+        await _loadSavedAccounts();
+      },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white54, width: 1.5),
+              color: _selectedAccount!.autoLoginEnabled
+                  ? Colors.blue
+                  : Colors.transparent,
+            ),
+            child: _selectedAccount!.autoLoginEnabled
+                ? const Icon(Icons.check, size: 12, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 8),
+          const Text('自动登录',
+              style: TextStyle(color: Colors.white54, fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountAvatarList() {
+    return SizedBox(
+      height: 50, // 固定列表高度
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        shrinkWrap: true, // 让 ListView 根据内容调整大小
+        itemCount: _savedAccounts.length + 1, // 账户数量 + 1个添加按钮
+        itemBuilder: (context, index) {
+          // 如果是最后一项，则显示“+”按钮
+          if (index == _savedAccounts.length) {
+            return _buildAddAccountButton();
+          }
+
+          // 否则，显示账户头像
+          final account = _savedAccounts[index];
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedAccount = account;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: ClipRRect(
+                // 使用 ClipRRect 来创建方形头像
+                borderRadius: BorderRadius.circular(4.0),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    // 为选中的头像添加边框以示区分
+                    border: Border.all(
+                      color: _selectedAccount?.username == account.username
+                          ? Colors.blue
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: (account.avatarUrl != null &&
+                          account.avatarUrl!.isNotEmpty)
+                      ? CachedNetworkImage(
+                          imageUrl:
+                              _apiService.getFullAvatarUrl(account.avatarUrl),
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          color: Colors.grey.shade700,
+                          child:
+                              const Icon(Icons.person, color: Colors.white70),
+                        ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAddAccountButton() {
+    return GestureDetector(
+      onTap: () {
+        // TODO: 实现添加新账户的逻辑。
+        // 一个简单的实现是导航到注册页或一个特殊的“添加账户”登录页
+        Navigator.pushNamed(context, '/register');
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(4.0),
+            border: Border.all(color: Colors.grey.shade600, width: 1),
+          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 24),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountSelector() {
+    return Column(
+      children: [
+        // 头像和添加按钮
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // 主头像
+            CircleAvatar(
+              radius: 45,
+              backgroundImage: (_selectedAccount?.avatarUrl != null)
+                  ? NetworkImage(
+                      _apiService.getFullAvatarUrl(_selectedAccount!.avatarUrl))
+                  : null,
+              child: (_selectedAccount?.avatarUrl == null)
+                  ? const Icon(Icons.person, size: 50, color: Colors.white54)
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            // 添加账户按钮
+            GestureDetector(
+              onTap: () {/* TODO: 实现添加新账户逻辑 */},
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.black.withAlpha(77),
+                child: const Icon(Icons.add, color: Colors.white, size: 24),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // 用户名和下拉菜单
+        if (_selectedAccount != null)
+          PopupMenuButton<SavedAccount>(
+            onSelected: (account) {
+              setState(() {
+                _selectedAccount = account;
+              });
+            },
+            itemBuilder: (context) {
+              return _savedAccounts.map((account) {
+                return PopupMenuItem<SavedAccount>(
+                  value: account,
+                  child: Text(account.username),
+                );
+              }).toList();
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _selectedAccount!.username,
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                const Icon(Icons.arrow_drop_down, color: Colors.white54),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 20),
+
+        // 自动登录复选框
+        if (_selectedAccount != null)
+          GestureDetector(
+            onTap: () {
+              final newValue = !_selectedAccount!.autoLoginEnabled;
+              _accountService.updateAutoLogin(_selectedAccount!, newValue);
+              setState(() {
+                _selectedAccount!.autoLoginEnabled = newValue;
+              });
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 自定义圆形复选框
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white54, width: 1.5),
+                    color: _selectedAccount!.autoLoginEnabled
+                        ? Colors.blue
+                        : Colors.transparent,
+                  ),
+                  child: _selectedAccount!.autoLoginEnabled
+                      ? const Icon(Icons.check, size: 12, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                const Text('自动登录',
+                    style: TextStyle(color: Colors.white54, fontSize: 14)),
+              ],
+            ),
+          ),
+      ],
     );
   }
 

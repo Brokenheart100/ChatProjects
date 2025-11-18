@@ -1,9 +1,5 @@
-// lib/widgets/contact_detail_panel.dart
-
 import 'package:flutter/material.dart';
 import '../models/contact.dart';
-// 假设您已经将 PlaceholderAvatar 提取到了单独的文件
-// import 'placeholder_avatar.dart';
 
 // --- 核心改动 1: 将 Widget 转换为 StatefulWidget ---
 class ContactDetailPanel extends StatefulWidget {
@@ -17,20 +13,30 @@ class ContactDetailPanel extends StatefulWidget {
 class _ContactDetailPanelState extends State<ContactDetailPanel> {
   // --- 核心改动 2: 将状态变量移入 State 类 ---
   String? _selectedGroup;
-
-  final List<String> _groupOptions = [
-    '《高中美男团》',
-    '【ε-世界线】',
-    '【β-世界线】',
-    '家人',
-    '同事',
-  ];
-
+  final List<String> _groupOptions = ['我的好友', '家人', '同事'];
   @override
   void initState() {
     super.initState();
     // 在 initState 中初始化状态，而不是在 build 方法中
-    _selectedGroup = widget.contact.groupName;
+    // _selectedGroup = widget.contact.groupName;
+  }
+
+  @override
+  void didUpdateWidget(ContactDetailPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 当父组件传入的 contact 对象发生变化时 (例如用户切换了选中的好友)，
+    // 我们也需要更新 _selectedGroup
+    if (widget.contact != oldWidget.contact) {
+      _updateSelectedGroup();
+    }
+  }
+
+  void _updateSelectedGroup() {
+    // 如果 contact 的 groupName 存在于我们的选项中，就设为默认值，否则为 null
+    _selectedGroup = (widget.contact.groupName != null &&
+            _groupOptions.contains(widget.contact.groupName))
+        ? widget.contact.groupName
+        : null;
   }
 
   // --- 核心改动 3: 在 build 方法中，用 widget.contact 访问传入的数据 ---
@@ -39,9 +45,9 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
     return Expanded(
       child: Container(
         color: const Color(0xFF54514E),
-        padding: const EdgeInsets.all(30.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // 使用 ListView 代替 Column，以获得自然的滚动效果
+        child: ListView(
+          padding: const EdgeInsets.all(30.0),
           children: [
             _buildHeader(),
             const SizedBox(height: 20),
@@ -50,16 +56,13 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
             _buildLevel(),
             const Divider(color: Colors.white10, height: 40),
             _buildInfoRow(Icons.edit_outlined, '备注', widget.contact.remark),
-
-            // --- 核心改动 4: 调用下拉框构建方法 ---
             _buildGroupDropdown(),
-
-            _buildInfoRow(
-                Icons.edit_note_outlined, '签名', widget.contact.signature),
+            _buildInfoRow(Icons.edit_note_outlined, '签名',
+                widget.contact.signature ?? '(暂无签名)'),
             _buildInfoRow(Icons.star_outline, 'QQ空间', '', isArrow: true),
             const SizedBox(height: 20),
             _buildPhotoGrid(),
-            const Spacer(),
+            const SizedBox(height: 50),
             _buildActionButtons(),
           ],
         ),
@@ -113,46 +116,45 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
     );
   }
 
-  // --- 所有其他方法现在都使用 widget.contact 来访问数据 ---
-
   Widget _buildHeader() {
     return Row(
       children: [
-        // 假设您已经在使用 PlaceholderAvatar
-        // PlaceholderAvatar(text: widget.contact.name, radius: 45, fontSize: 32),
         CircleAvatar(
-            radius: 45, backgroundImage: AssetImage(widget.contact.avatar)),
+          radius: 45,
+          // 使用 NetworkImage 加载网络头像
+          backgroundImage: (widget.contact.avatarUrl != null &&
+                  widget.contact.avatarUrl!.isNotEmpty)
+              ? NetworkImage(widget.contact.avatarUrl!)
+              : null,
+          child: (widget.contact.avatarUrl == null ||
+                  widget.contact.avatarUrl!.isEmpty)
+              ? const Icon(Icons.person, size: 50, color: Colors.white54)
+              : null,
+        ),
         const SizedBox(width: 20),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 使用 name 属性
             Text(widget.contact.name,
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text('QQ ${widget.contact.qqNumber}',
-                style: const TextStyle(color: Colors.white70, fontSize: 14)),
+            // QQ 号码暂时用占位符
+            const Text('QQ (暂无)',
+                style: TextStyle(color: Colors.white70, fontSize: 14)),
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(widget.contact.statusIcon,
-                    color: widget.contact.statusIconColor, size: 16),
+                // 状态暂时用静态占位符
+                const Icon(Icons.circle, color: Colors.grey, size: 16),
                 const SizedBox(width: 6),
-                Text(widget.contact.statusText,
-                    style: TextStyle(
-                        color: widget.contact.statusIconColor, fontSize: 14)),
+                const Text('离线',
+                    style: TextStyle(color: Colors.grey, fontSize: 14)),
               ],
             ),
-          ],
-        ),
-        const Spacer(),
-        Column(
-          children: const [
-            Icon(Icons.thumb_up_alt_outlined, color: Colors.white70, size: 20),
-            SizedBox(height: 4),
-            Text('1010', style: TextStyle(color: Colors.white70, fontSize: 13)),
           ],
         ),
       ],
@@ -160,23 +162,42 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
   }
 
   Widget _buildPersonalInfo() {
-    return Row(
+    if (widget.contact.gender == null &&
+        widget.contact.age == null &&
+        widget.contact.birthday == null) {
+      return const SizedBox.shrink();
+    }
+
+    // --- 核心修复：使用 Wrap 代替 Row ---
+    return Wrap(
+      spacing: 8.0, // 子组件之间的水平间距
+      runSpacing: 4.0, // 行与行之间的垂直间距
+      crossAxisAlignment: WrapCrossAlignment.center, // 让同一行的所有子组件垂直居中
       children: [
-        Icon(widget.contact.gender == '男' ? Icons.male : Icons.female,
-            color: Colors.blue, size: 16),
-        Text(' ${widget.contact.gender}',
-            style: const TextStyle(color: Colors.white, fontSize: 14)),
-        _buildDivider(),
-        Text('${widget.contact.age}岁',
-            style: const TextStyle(color: Colors.white, fontSize: 14)),
-        _buildDivider(),
-        Text(widget.contact.birthday,
-            style: const TextStyle(color: Colors.white, fontSize: 14)),
-        _buildDivider(),
-        Text(widget.contact.constellation,
-            style: const TextStyle(color: Colors.white, fontSize: 14)),
+        if (widget.contact.gender != null) ...[
+          Icon(widget.contact.gender == '男' ? Icons.male : Icons.female,
+              color: Colors.blue, size: 16),
+          Text(' ${widget.contact.gender}',
+              style: const TextStyle(color: Colors.white, fontSize: 14)),
+          // 我们不再需要手动添加 Divider，间距由 spacing 控制
+          // _buildDivider(),
+        ],
+        if (widget.contact.age != null) ...[
+          Text('${widget.contact.age}岁',
+              style: const TextStyle(color: Colors.white, fontSize: 14)),
+          // _buildDivider(),
+        ],
+        if (widget.contact.birthday != null) ...[
+          Text(widget.contact.birthday!,
+              style: const TextStyle(color: Colors.white, fontSize: 14)),
+          // _buildDivider(),
+        ],
+        if (widget.contact.constellation != null)
+          Text(widget.contact.constellation!,
+              style: const TextStyle(color: Colors.white, fontSize: 14)),
       ],
     );
+    // ------------------------------------
   }
 
   Widget _buildLevel() {
@@ -216,9 +237,6 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
   }
 
   Widget _buildPhotoGrid() {
-    if (widget.contact.photos.isEmpty) {
-      return const SizedBox.shrink();
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -228,15 +246,7 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
                 fontSize: 15,
                 fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        Row(
-          children: widget.contact.photos
-              .map((path) => Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Image.asset(path,
-                        width: 60, height: 60, fit: BoxFit.cover),
-                  ))
-              .toList(),
-        ),
+        Row(),
       ],
     );
   }

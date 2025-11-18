@@ -110,7 +110,7 @@ async Task ApplyMigrationsAsync(IServiceProvider services)
 
         logger.LogInformation("Database migrations applied successfully.");
         // 4.2 ִ���������
-        await app.SeedDatabaseAsync();
+        //await app.SeedDatabaseAsync();
     }
     catch (Exception ex)
     {

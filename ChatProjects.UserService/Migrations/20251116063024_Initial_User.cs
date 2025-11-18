@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ChatProjects.UserService.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate_UserService : Migration
+    public partial class Initial_User : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -44,21 +44,22 @@ namespace ChatProjects.UserService.Migrations
                 name: "UserProfiles",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "text", nullable: false),
+                    UserId = table.Column<string>(type: "text", nullable: false),
+                    Id = table.Column<string>(type: "text", nullable: true),
                     UserName = table.Column<string>(type: "text", nullable: true),
                     Email = table.Column<string>(type: "text", nullable: true),
+                    AvatarUrl = table.Column<string>(type: "text", nullable: true),
                     DisplayName = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_UserProfiles", x => x.Id);
+                    table.PrimaryKey("PK_UserProfiles", x => x.UserId);
                 });
 
             migrationBuilder.CreateIndex(
                 name: "IX_FriendRequests_SenderId_RecipientId",
                 table: "FriendRequests",
-                columns: new[] { "SenderId", "RecipientId" },
-                unique: true);
+                columns: new[] { "SenderId", "RecipientId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Friendships_User1Id_User2Id",

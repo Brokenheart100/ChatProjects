@@ -12,6 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  equatable: ^2.0.5
+  flutter_bloc: ^8.1.6
   cupertino_icons: ^1.0.8
   window_manager: ^0.5.1
   desktop_multi_window: ^0.3.0
@@ -19,6 +21,9 @@ dependencies:
   shared_preferences: ^2.5.3
   logger: ^2.6.2
   image_picker: ^1.2.0
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  mqtt_client: ^10.11.1
 
 dev_dependencies:
   flutter_test:

@@ -1,24 +1,92 @@
 // 导入Flutter Material组件库，用于构建聊天面板的UI界面
 import 'package:flutter/material.dart';
+import 'package:flutterchat/services/mqtt_service.dart';
 // 导入聊天消息数据模型，存储单条聊天消息的信息（如发送者、内容、头像等）
 import '../models/chat_message.dart';
 // 导入会话数据模型，存储当前聊天会话的基础信息（如会话名称）
 import '../models/conversation.dart';
 
-// 聊天面板核心组件，继承无状态组件StatelessWidget
-// 负责展示聊天头部、消息列表、消息输入区域三大模块
-class ChatPanel extends StatelessWidget {
-  // 当前聊天的会话信息：用于获取会话名称等基础数据
+class ChatPanel extends StatefulWidget {
   final Conversation conversation;
-  // 当前会话的消息列表：用于展示所有聊天消息
-  final List<ChatMessage> messages;
+  final MqttService? mqttService;
 
-  // 构造函数：接收会话信息和消息列表，均为必选参数
+  // 2. 移除构造函数前的 const
   const ChatPanel({
     super.key,
     required this.conversation,
-    required this.messages,
+    this.mqttService,
   });
+
+  @override
+  State<ChatPanel> createState() => _ChatPanelState();
+}
+
+// 聊天面板核心组件，继承无状态组件StatelessWidget
+// 负责展示聊天头部、消息列表、消息输入区域三大模块
+class _ChatPanelState extends State<ChatPanel> {
+  // 当前聊天的会话信息：用于获取会话名称等基础数据
+
+  final _textController = TextEditingController();
+  late List<ChatMessage> _messages; // 将消息列表也作为状态管理
+
+  @override
+  void initState() {
+    super.initState();
+    // 初始化时，从 widget 获取初始消息列表
+    _messages = List.from(widget.conversation.messages);
+
+    // (推荐) 监听新消息，实现实时接收
+    widget.mqttService?.onMessageReceived.listen((message) {
+      // 确保收到的消息是发给当前用户的，并且来自当前会话的对方
+      if (message.senderId == widget.conversation.id) {
+        // 假设 conversation.id 是对方的id
+        if (mounted) {
+          final incomingMessage = ChatMessage(
+            isMe: false,
+            sender: "对方", // 这里应该根据 senderId 获取用户名
+            text: message.text,
+            avatar: widget.conversation.avatar, // 使用对方的头像
+          );
+          setState(() {
+            _messages.insert(0, incomingMessage);
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _sendMessage() {
+    final text = _textController.text.trim();
+    // 7. 使用 widget. 来访问 StatefulWidget 的属性
+    if (text.isNotEmpty && widget.mqttService != null) {
+      // 假设 Conversation 对象中有对方用户的 ID
+      final recipientId = widget.conversation.id; // 使用会话ID作为接收者ID
+      widget.mqttService!.sendChatMessage(recipientId, text);
+
+      // (可选) 立即将自己发送的消息添加到UI
+      final myMessage = ChatMessage(
+        isMe: true,
+        text: text,
+        avatar: 'assets/image/5.jpg', // 应该使用当前登录用户的头像
+        sender: '我',
+      );
+      // 8. 使用 setState 来通知UI刷新
+      setState(() {
+        _messages.insert(0, myMessage);
+        widget.conversation.lastMessage = text; // 更新会话的最后一条消息
+        widget.conversation.time =
+            "${DateTime.now().hour}:${DateTime.now().minute}";
+      });
+
+      _textController.clear();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +95,7 @@ class ChatPanel extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Color(0xFF333333),
         image: DecorationImage(
-          image: AssetImage('assets/Image/10.jpg'), // 聊天背景图资源路径
+          image: AssetImage('assets/Image/25.jpg'), // 聊天背景图资源路径
           fit: BoxFit.cover, // 背景图铺满容器
           opacity: 0.1, // 背景图透明度（避免遮挡前景内容）
         ),
@@ -49,7 +117,7 @@ class ChatPanel extends StatelessWidget {
               children: [
                 // 会话名称 + 人数标记（示例：“XXX (12)”）
                 Text(
-                  '${conversation.name} (12)', // 拼接会话名称与人数
+                  '${widget.conversation.name} (12)', // 拼接会话名称与人数
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 const Spacer(), // 填充空间，将右侧功能图标推至最右端
@@ -72,9 +140,9 @@ class ChatPanel extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(20),
-              itemCount: messages.length,
+              itemCount: _messages.length,
               itemBuilder: (context, index) {
-                final message = messages[index];
+                final message = _messages[index];
                 // 根据 message.isMe 决定调用哪个布局方法
                 if (message.isMe) {
                   return _buildMyMessage(context, message);
@@ -113,18 +181,22 @@ class ChatPanel extends StatelessWidget {
                 ),
 
                 // 3.2 消息输入框（占满剩余高度，支持多行输入）
-                const Expanded(
+                Expanded(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.0), // 水平内边距16
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16.0), // 水平内边距16
                     child: TextField(
-                      style: TextStyle(
+                      controller: _textController,
+                      onSubmitted: (_) => _sendMessage(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
                       ), // 输入文本样式
                       maxLines: null, // 取消最大行数限制（支持自动换行）
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         border: InputBorder.none, // 取消默认边框
-                        hintText: '', // 空提示文本（可根据需求修改）
+                        hintText: 'input', // 空提示文本（可根据需求修改）
+                        hintStyle: TextStyle(color: Colors.white54),
                       ),
                     ),
                   ),
@@ -136,7 +208,7 @@ class ChatPanel extends StatelessWidget {
                   child: Align(
                     alignment: Alignment.centerRight, // 右对齐
                     child: ElevatedButton(
-                      onPressed: () {}, // 点击事件（暂为空实现）
+                      onPressed: _sendMessage, // 点击事件（暂为空实现）
                       // 按钮样式
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(

@@ -43,10 +43,12 @@ namespace ChatProjects.UserService.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("SenderId", "RecipientId")
-                        .IsUnique();
+                    b.HasIndex("SenderId", "RecipientId");
 
                     b.ToTable("FriendRequests");
                 });
@@ -78,7 +80,10 @@ namespace ChatProjects.UserService.Migrations
 
             modelBuilder.Entity("ChatProjects.UserService.Entities.UserProfile", b =>
                 {
-                    b.Property<string>("Id")
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AvatarUrl")
                         .HasColumnType("text");
 
                     b.Property<string>("DisplayName")
@@ -90,7 +95,7 @@ namespace ChatProjects.UserService.Migrations
                     b.Property<string>("UserName")
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("UserId");
 
                     b.ToTable("UserProfiles", (string)null);
                 });

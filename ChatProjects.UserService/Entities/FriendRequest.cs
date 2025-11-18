@@ -14,5 +14,6 @@
         public string RecipientId { get; set; } = null!;
         public FriendRequestStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; internal set; }
     }
 }

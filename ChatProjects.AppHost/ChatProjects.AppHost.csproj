@@ -16,6 +16,7 @@
     <ProjectReference Include="..\ChatProjects.FileService\ChatProjects.FileService.csproj" />
     <ProjectReference Include="..\ChatProjects.GatewayService\ChatProjects.GatewayService.csproj" />
     <ProjectReference Include="..\ChatProjects.OrleansSilo\ChatProjects.OrleansSilo.csproj" />
+    <ProjectReference Include="..\ChatProjects.RealtimeService\ChatProjects.RealtimeService.csproj" />
     <ProjectReference Include="..\ChatProjects.SearchService\ChatProjects.SearchService.csproj" />
     <ProjectReference Include="..\ChatProjects.UserService\ChatProjects.UserService.csproj" />
     <ProjectReference Include="..\ChatProjects.Web\ChatProjects.Web.csproj" />
@@ -29,6 +30,7 @@
     <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.0.0" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="13.0.0" />
     <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.0.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
   </ItemGroup>
 
 </Project>

@@ -1,14 +1,18 @@
 import 'chat_message.dart'; // 引入ChatMessage模型
 
 class Conversation {
+  final String id;
+  final String recipientId;
   final String avatar;
   final String name;
-  final String lastMessage;
-  final String time;
+  String lastMessage;
+  String time;
   final bool isMuted;
   final List<ChatMessage> messages; // <-- 新增字段：存储该会话的所有消息
 
   Conversation({
+    required this.id,
+    required this.recipientId,
     required this.avatar,
     required this.name,
     required this.lastMessage,

@@ -1,217 +1,174 @@
-// lib/widgets/contacts_panel.dart
+// 文件: lib/widgets/contacts_panel.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutterchat/bloc/contacts_panel/contacts_panel_bloc.dart';
+import 'package:flutterchat/models/contact.dart';
+import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:flutterchat/widgets/custom_search_field.dart';
-import '../models/contact.dart';
-import '../models/contact_group.dart';
-import 'contact_detail_panel.dart'; // <-- Import the new detail panel
 
-class ContactsPanel extends StatefulWidget {
-  final List<ContactGroup> contactGroups;
+/// 联系人列表面板，现在是一个无状态的、由 BLoC 驱动的组件。
+class ContactsPanel extends StatelessWidget {
+  final VoidCallback? onAddFriend;
+  final VoidCallback? onNavigateToFriendRequests;
+  final String? selectedContactId;
+  final ValueChanged<Contact> onContactSelected;
 
-  const ContactsPanel({super.key, required this.contactGroups});
-
-  @override
-  State<ContactsPanel> createState() => _ContactsPanelState();
-}
-
-class _ContactsPanelState extends State<ContactsPanel> {
-  int _selectedTabIndex = 0;
-  Contact? _selectedContact;
-  final Set<String> _expandedGroups = {};
+  const ContactsPanel({
+    super.key,
+    required this.onContactSelected,
+    this.onAddFriend,
+    this.onNavigateToFriendRequests,
+    this.selectedContactId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Left side: Contacts List (this is correct)
-        _buildContactsList(),
-
-        // --- FIX: Conditionally show detail panel or placeholder ---
-        _selectedContact == null
-            ? _buildPlaceholder()
-            : ContactDetailPanel(contact: _selectedContact!),
-      ],
-    );
-  }
-
-  Widget _buildContactsList() {
-    return Container(
-      width: 280,
-      color: const Color(0xFF474542),
-      child: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: CustomSearchField(
-                    hintText: '搜索',
-                  ),
+    // BlocBuilder 会自动监听 ContactsPanelBloc 的状态变化，并在每次状态更新时重建UI
+    return BlocBuilder<ContactsPanelBloc, ContactsPanelState>(
+      builder: (context, state) {
+        return Container(
+          width: 280,
+          color: const Color(0xFF474542),
+          child: Column(
+            children: [
+              // 搜索栏和添加按钮
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  children: [
+                    const Expanded(child: CustomSearchField(hintText: '搜索')),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: onAddFriend,
+                      child: Container(
+                        height: 32,
+                        width: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5A5855),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(Icons.add,
+                            size: 20, color: Colors.white54),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  height: 32,
-                  width: 32,
+              ),
+
+              // 好友管理器 (静态 UI)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                child: Container(
+                  height: 40,
                   decoration: BoxDecoration(
                     color: const Color(0xFF5A5855),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Icon(Icons.add, size: 20, color: Colors.white54),
-                ),
-              ],
-            ),
-          ),
-          // Friend Manager Button
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12.0,
-              vertical: 8.0,
-            ),
-            child: Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFF5A5855),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.person_search, size: 18, color: Colors.white70),
-                    SizedBox(width: 8),
-                    Text(
-                      '好友管理器',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                  child: const Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.person_search,
+                            size: 18, color: Colors.white70),
+                        SizedBox(width: 8),
+                        Text('好友管理器',
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 14)),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          _buildNotificationTile('好友通知'),
-          _buildNotificationTile('群通知'),
 
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-            child: Divider(color: Colors.white10, height: 1),
-          ),
+              // 通知条目，数据来自 BLoC state
+              _buildNotificationTile('好友通知',
+                  count: state.pendingRequestCount,
+                  onTap: onNavigateToFriendRequests),
+              _buildNotificationTile('群通知', onTap: () {}),
 
-          _buildToggle(),
+              const Divider(
+                  color: Colors.white10, height: 1, indent: 12, endIndent: 12),
 
-          // Contact Groups List
-          Expanded(
-            child: ListView.builder(
-              itemCount: widget.contactGroups.length,
-              itemBuilder: (context, index) {
-                final group = widget.contactGroups[index];
-                final isExpanded = _expandedGroups.contains(group.name);
-                return Column(
-                  children: [
-                    ListTile(
-                      leading: Icon(
-                        isExpanded
-                            ? Icons.keyboard_arrow_down
-                            : Icons.chevron_right,
-                        color: Colors.white54,
-                        size: 20,
+              // 好友/群聊切换栏 (静态 UI)
+              _buildToggle(),
+
+              // 动态列表部分
+              Expanded(
+                child: state.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                        itemCount: state.contactGroups.length,
+                        itemBuilder: (context, index) {
+                          final group = state.contactGroups[index];
+                          final isExpanded =
+                              state.expandedGroups.contains(group.name);
+
+                          return Column(
+                            children: [
+                              ListTile(
+                                leading: group.contacts.isEmpty
+                                    ? const SizedBox(width: 24)
+                                    : Icon(
+                                        isExpanded
+                                            ? Icons.keyboard_arrow_down
+                                            : Icons.chevron_right,
+                                        color: Colors.white54,
+                                        size: 20,
+                                      ),
+                                title: Text(group.name,
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 14)),
+                                trailing: Text(group.countDisplay,
+                                    style: const TextStyle(
+                                        color: Colors.white54, fontSize: 13)),
+                                dense: true,
+                                onTap: () {
+                                  if (group.contacts.isNotEmpty) {
+                                    // 发送事件给 BLoC 来处理状态变化
+                                    context
+                                        .read<ContactsPanelBloc>()
+                                        .add(ToggleContactGroup(group.name));
+                                  }
+                                },
+                              ),
+                              if (isExpanded)
+                                ...group.contacts.map((contact) =>
+                                    _buildContactTile(context, contact,
+                                        state.selectedContact)),
+                            ],
+                          );
+                        },
                       ),
-                      title: Text(
-                        group.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                      trailing: Text(
-                        group.countDisplay,
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 13,
-                        ),
-                      ),
-                      dense: true,
-                      onTap: () {
-                        setState(() {
-                          if (isExpanded) {
-                            _expandedGroups.remove(group.name);
-                          } else {
-                            _expandedGroups.add(group.name);
-                          }
-                        });
-                      },
-                    ),
-                    if (isExpanded)
-                      ...group.contacts
-                          .map((contact) => _buildContactTile(contact)),
-                  ],
-                );
-              },
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildContactTile(Contact contact) {
-    bool isSelected = _selectedContact == contact;
+  /// 构建单个联系人条目
+  Widget _buildContactTile(
+      BuildContext context, Contact contact, Contact? selectedContact) {
+    bool isSelected = selectedContact?.id == contact.id;
+
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedContact = contact;
-        });
+        // 发送事件给 BLoC 来更新选中的联系人
+        context.read<ContactsPanelBloc>().add(SelectContact(contact));
       },
       child: Container(
         color: isSelected ? const Color(0xFF5A5855) : Colors.transparent,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 8,
-        ), // Indent a bit more
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: AssetImage(contact.avatar),
-            ),
+            CustomCircleAvatar(avatarUrl: contact.avatarUrl, radius: 20),
             const SizedBox(width: 12),
-            // Use Expanded to prevent overflow with long names/signatures
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    contact.remark,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        contact.statusIcon,
-                        color: contact.statusIconColor,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      // Use Expanded here as well for the signature
-                      Expanded(
-                        child: Text(
-                          '[${contact.statusText}] ${contact.signature}',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              child: Text(contact.remark,
+                  style: const TextStyle(color: Colors.white, fontSize: 14)),
             ),
           ],
         ),
@@ -219,22 +176,33 @@ class _ContactsPanelState extends State<ContactsPanel> {
     );
   }
 
-  Widget _buildNotificationTile(String title) {
+  /// 构建通知条目
+  Widget _buildNotificationTile(String title,
+      {int count = 0, VoidCallback? onTap}) {
     return ListTile(
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-      ),
-      trailing: const Icon(
-        Icons.chevron_right,
-        color: Colors.white54,
-        size: 20,
+      title: Text(title,
+          style: const TextStyle(color: Colors.white, fontSize: 14)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (count > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                  color: Colors.red, borderRadius: BorderRadius.circular(8)),
+              child: Text(count.toString(),
+                  style: const TextStyle(color: Colors.white, fontSize: 12)),
+            ),
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right, color: Colors.white54, size: 20),
+        ],
       ),
       dense: true,
-      onTap: () {},
+      onTap: onTap,
     );
   }
 
+  /// 构建“好友”/“群聊”切换栏
   Widget _buildToggle() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -245,46 +213,27 @@ class _ContactsPanelState extends State<ContactsPanel> {
           borderRadius: BorderRadius.circular(4),
         ),
         child: Row(
-          children: [_buildToggleTab('好友', 0), _buildToggleTab('群聊', 1)],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToggleTab(String text, int index) {
-    bool isSelected = _selectedTabIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedTabIndex = index;
-          });
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF5A5855) : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Center(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white54,
-                fontSize: 13,
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5A5855),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Center(
+                    child: Text("好友",
+                        style: TextStyle(color: Colors.white, fontSize: 13))),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholder() {
-    return Expanded(
-      child: Container(
-        color: const Color(0xFF54514E),
-        child: const Center(
-          child: Icon(Icons.flutter_dash, size: 120, color: Color(0x1F000000)),
+            Expanded(
+              child: Container(
+                color: Colors.transparent,
+                child: const Center(
+                    child: Text("群聊",
+                        style: TextStyle(color: Colors.white54, fontSize: 13))),
+              ),
+            ),
+          ],
         ),
       ),
     );

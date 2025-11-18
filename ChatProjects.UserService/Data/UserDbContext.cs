@@ -8,7 +8,6 @@ public class UserDbContext : DbContext
     public UserDbContext(DbContextOptions<UserDbContext> options) : base(options)
     {
     }
-    // public DbSet<UserProfile> Users { get; set; }
     public DbSet<UserProfile> UserProfiles { get; set; }
     public DbSet<FriendRequest> FriendRequests { get; set; }
     public DbSet<Friendship> Friendships { get; set; }
@@ -19,7 +18,7 @@ public class UserDbContext : DbContext
         //modelBuilder.Entity<UserProfile>().ToTable("AspNetUsers", schema: "public");
         modelBuilder.Entity<UserProfile>(entity =>
         {
-            entity.HasKey(e => e.Id); // 将 UserId 设为主键
+            entity.HasKey(e => e.UserId); // 将 UserId 设为主键
             entity.ToTable("UserProfiles");
         });
 
@@ -27,8 +26,7 @@ public class UserDbContext : DbContext
         modelBuilder.Entity<FriendRequest>(entity =>
         {
             entity.HasKey(e => e.Id);
-            // 可以添加索引等其他配置
-            entity.HasIndex(e => new { e.SenderId, e.RecipientId }).IsUnique();
+            entity.HasIndex(e => new { e.SenderId, e.RecipientId });
             entity.Property(e => e.Status)
                 .HasConversion<string>();
         });

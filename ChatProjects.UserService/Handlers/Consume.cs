@@ -17,7 +17,7 @@ public class UserEventHandler
         logger.LogInformation("Received UserRegistered event for UserId: {UserId}", message.UserId);
 
         // 检查该用户资料是否已经存在，以处理消息重复消费的情况 (幂等性)
-        var userExists = await dbContext.UserProfiles.AnyAsync(u => u.Id == message.UserId);
+        var userExists = await dbContext.UserProfiles.AnyAsync(u => u.UserId == message.UserId);
         if (userExists)
         {
             logger.LogWarning("User profile for UserId {UserId} already exists. Skipping creation.", message.UserId);
@@ -27,7 +27,7 @@ public class UserEventHandler
         // 创建新的用户资料实体
         var newUserProfile = new UserProfile
         {
-            Id = message.UserId,
+            UserId = message.UserId,
             UserName = message.UserName,
             DisplayName = message.UserName // 默认将用户名作为昵称
         };
