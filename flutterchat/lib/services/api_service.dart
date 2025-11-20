@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart'; // 网络请求库，用于发送HTTP请求
 import 'package:flutterchat/models/auth_response.dart'; // 认证响应数据模型
+import 'package:flutterchat/models/chat_message.dart';
 import 'package:flutterchat/models/friend_request.dart';
 import 'package:flutterchat/models/user_search_result.dart';
 import 'package:flutterchat/services/logger_service.dart'; // 日志服务，用于记录系统日志
@@ -445,6 +446,49 @@ class ApiService {
     } on DioException {
       // 发生错误时返回 0，避免 UI 崩溃
       return 0;
+    }
+  }
+
+  Future<void> sendMessage(String conversationId, String content,
+      {int contentType = 0, String? recipientId}) async {
+    await _dio.post(
+      '/gateway/messages', // 网关会把 /messages 路由到 ChatHistoryService
+      data: {
+        'conversationId': conversationId,
+        'content': content,
+        'contentType': 0, // 0 for Text
+        'recipientId': recipientId,
+      },
+    );
+  }
+
+  // 确保方法签名包含 currentUserId
+  Future<List<ChatMessage>> getMessageHistory(String conversationId,
+      {required String currentUserId}) async {
+    try {
+      final response = await _dio.get(
+        '/gateway/conversations/$conversationId/messages',
+        queryParameters: {'limit': 20}, // 可以根据需要添加分页参数
+      );
+
+      final List<dynamic> data = response.data;
+
+      return data.map((json) {
+        // 获取消息发送者ID
+        final senderId = json['senderId'].toString(); // 确保转为字符串比较
+
+        return ChatMessage(
+          // --- 核心逻辑：判断是否是自己发的消息 ---
+          isMe: senderId == currentUserId,
+          // -----------------------------------
+          sender: json['senderId'], // 或者从其他地方获取昵称
+          text: json['content'],
+          contentType: json['contentType'] ?? 0,
+          avatar: '', // 这里可以使用默认头像，或者根据 senderId 查找缓存的头像
+        );
+      }).toList();
+    } on DioException {
+      rethrow;
     }
   }
 }

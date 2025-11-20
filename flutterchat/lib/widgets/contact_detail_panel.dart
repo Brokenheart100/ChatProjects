@@ -4,7 +4,12 @@ import '../models/contact.dart';
 // --- 核心改动 1: 将 Widget 转换为 StatefulWidget ---
 class ContactDetailPanel extends StatefulWidget {
   final Contact contact;
-  const ContactDetailPanel({super.key, required this.contact});
+  final ValueChanged<Contact>? onSendMessage;
+  const ContactDetailPanel({
+    super.key,
+    required this.contact,
+    this.onSendMessage, // --- 新增：构造函数参数 ---
+  });
 
   @override
   State<ContactDetailPanel> createState() => _ContactDetailPanelState();
@@ -260,7 +265,9 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
         _buildButton('音视频通话'),
         const SizedBox(width: 12),
         ElevatedButton(
-          onPressed: () {},
+          onPressed: () {
+            widget.onSendMessage?.call(widget.contact);
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFC9C960),
             foregroundColor: Colors.black,

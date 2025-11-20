@@ -88,7 +88,13 @@ var realtimeService = builder.AddProject<Projects.ChatProjects_RealtimeService>(
     .WithEnvironment("ConnectionStrings__mqtt", mqttBroker.GetEndpoint("mqtt"))
     .WithReference(mqttBroker.GetEndpoint("mqtt"));
 
+var chatHistoryDb = postgresServer.AddDatabase("chathistorydb");
 
+var chatHistoryService = builder.AddProject<Projects.ChatProjects_ChatHistoryService>("chathistoryservice")
+    .WithReference(rabbitmq)
+    .WaitFor(rabbitmq)
+    .WithReference(chatHistoryDb)// 引用自己的数据库
+    .WaitFor(postgresServer);
 
 
 builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
@@ -97,7 +103,10 @@ builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
     .WithReference(fileService)
     .WithReference(authService)
     .WithReference(searchService)
-    .WithReference(userService);
+    .WithReference(userService)
+    .WithReference(chatHistoryService);
+
+
 
 
 

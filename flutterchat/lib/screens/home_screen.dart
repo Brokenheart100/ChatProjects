@@ -1,7 +1,4 @@
-// 文件: lib/screens/home_screen.dart
-
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterchat/bloc/contacts_panel/contacts_panel_bloc.dart';
@@ -19,6 +16,7 @@ import '../widgets/contacts_panel.dart';
 import '../widgets/conversation_list.dart';
 import '../widgets/left_nav_rail.dart';
 import '../widgets/title_bar.dart';
+import 'package:uuid/uuid.dart'; // 引入库
 
 enum MainPanelState {
   chat,
@@ -52,56 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription? _messageSubscription;
 
   // 模拟数据
-  final List<Conversation> _conversations = [
-    Conversation(
-      id: "0",
-      recipientId: "0",
-      avatar: 'assets/image/1.jpg', // 使用您自己的资源路径
-      name: 'Flutter 开发者交流群',
-      lastMessage: '大佬：BLoC 是 Flutter 的未来！',
-      time: '10:30',
-      isMuted: true,
-      messages: [
-        ChatMessage(
-            isMe: false,
-            sender: '新手小白',
-            text: '请问 StatefulWidget 和 StatelessWidget 有什么区别？',
-            avatar: 'assets/image/1.jpg'),
-        ChatMessage(
-            isMe: false,
-            sender: '热心群友',
-            text: '一个有状态，一个无状态。无状态的 UI 在数据变化时不会自己刷新。',
-            avatar: 'assets/image/2.jpg',
-            level: 'LV10'),
-      ],
-    ),
-    Conversation(
-      id: "2",
-      recipientId: "2",
-      avatar: 'assets/image/2.jpg',
-      name: 'UI 设计师-小雅',
-      lastMessage: '[图片]',
-      time: '09:15',
-      isMuted: false,
-      messages: [
-        ChatMessage(
-            isMe: false,
-            sender: 'UI 设计师-小雅',
-            text: '这是最新的设计稿，你看下~',
-            avatar: 'assets/image/2.jpg'),
-        ChatMessage(
-            isMe: true,
-            sender: '我',
-            text: '收到！看起来很棒！',
-            avatar: 'assets/image/1.jpg'),
-        ChatMessage(
-            isMe: false,
-            sender: 'UI 设计师-小雅',
-            text: '[图片]',
-            avatar: 'assets/image/2.jpg'),
-      ],
-    ),
-  ];
+  final List<Conversation> _conversations = [];
 
   MqttService? _mqttService;
   @override
@@ -241,11 +190,58 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// 总指挥：根据当前状态构建主面板
-  /// 总指挥：根据当前状态构建主面板
+  void _startConversation(Contact contact) {
+    setState(() {
+      // 1. 检查是否已经存在与该用户的会话
+      final existingIndex = _conversations.indexWhere(
+        (c) => c.recipientId == contact.id,
+      );
+
+      if (existingIndex != -1) {
+        // A. 如果存在，直接选中该会话
+        _selectedConversationIndex = existingIndex;
+      } else {
+        // B. 如果不存在，创建一个新的会话并插入到列表顶部
+        final newConversation = Conversation(
+          // 生成一个临时的会话ID (实际项目中通常由后端返回，或者用 UUID)
+          id: const Uuid().v4(),
+          recipientId: contact.id,
+          name: contact.remark.isNotEmpty ? contact.remark : contact.name,
+          avatar: contact.avatarUrl ?? 'assets/image/default.png', // 处理空头像
+          lastMessage: '',
+          time: "${DateTime.now().hour}:${DateTime.now().minute}",
+          messages: [], // 空消息列表
+          isMuted: false,
+        );
+
+        _conversations.insert(0, newConversation);
+        _selectedConversationIndex = 0; // 选中新创建的会话
+      }
+
+      // 2. 切换 UI 状态到“聊天”面板
+      _currentMainState = MainPanelState.chat;
+      _selectedNavIndex = 0; // 左侧导航栏高亮“聊天”图标
+    });
+  }
+
   Widget _buildMainPanel() {
     switch (_currentMainState) {
       case MainPanelState.chat:
+        if (_conversations.isEmpty) {
+          return const Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble_outline,
+                      size: 64, color: Colors.white24),
+                  SizedBox(height: 16),
+                  Text("暂无会话", style: TextStyle(color: Colors.white54)),
+                ],
+              ),
+            ),
+          );
+        }
         return Expanded(
           child: Row(
             children: [
@@ -268,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ChatPanel(
                   conversation: _conversations[_selectedConversationIndex],
                   key: ValueKey(_conversations[_selectedConversationIndex].id),
-                  // messages: _conversations[_selectedConversationIndex].messages,
+                  currentUserId: _currentUser!.userId,
                   mqttService: _mqttService,
                 ),
               ),
@@ -376,7 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Expanded(
           child: ChatPanel(
             conversation: _conversations[_selectedConversationIndex],
-            // messages: _conversations[_selectedConversationIndex].messages,
+            currentUserId: _currentUser!.userId,
           ),
         );
 
@@ -415,7 +411,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (state.selectedContact == null) {
       return _buildPlaceholder("请从左侧选择一个联系人查看详情");
     } else {
-      return ContactDetailPanel(contact: state.selectedContact!);
+      return ContactDetailPanel(
+        contact: state.selectedContact!,
+        onSendMessage: _startConversation,
+      );
     }
   }
 

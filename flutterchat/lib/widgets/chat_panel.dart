@@ -1,19 +1,24 @@
 // 导入Flutter Material组件库，用于构建聊天面板的UI界面
 import 'package:flutter/material.dart';
+import 'package:flutterchat/services/api_service.dart';
+import 'package:flutterchat/services/logger_service.dart';
 import 'package:flutterchat/services/mqtt_service.dart';
+import 'package:image_picker/image_picker.dart';
 // 导入聊天消息数据模型，存储单条聊天消息的信息（如发送者、内容、头像等）
 import '../models/chat_message.dart';
 // 导入会话数据模型，存储当前聊天会话的基础信息（如会话名称）
 import '../models/conversation.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatPanel extends StatefulWidget {
   final Conversation conversation;
   final MqttService? mqttService;
-
+  final String currentUserId;
   // 2. 移除构造函数前的 const
   const ChatPanel({
     super.key,
     required this.conversation,
+    required this.currentUserId,
     this.mqttService,
   });
 
@@ -28,10 +33,12 @@ class _ChatPanelState extends State<ChatPanel> {
 
   final _textController = TextEditingController();
   late List<ChatMessage> _messages; // 将消息列表也作为状态管理
-
+  final ApiService _apiService = ApiService();
+  final ImagePicker _picker = ImagePicker();
   @override
   void initState() {
     super.initState();
+    _loadHistory();
     // 初始化时，从 widget 获取初始消息列表
     _messages = List.from(widget.conversation.messages);
 
@@ -55,37 +62,111 @@ class _ChatPanelState extends State<ChatPanel> {
     });
   }
 
+  void _loadHistory() async {
+    try {
+      var history = await _apiService.getMessageHistory(
+        widget.conversation.id,
+        currentUserId: widget.currentUserId,
+      );
+      if (mounted) {
+        setState(() {
+          _messages = history;
+        });
+      }
+    } catch (e) {
+      // --- 忽略新会话的错误 ---
+      // 如果是新创建的会话（后端还不存在），这里会报错。
+      // 我们可以在这里忽略错误，或者判断如果是 403/404 就不做处理，默认为空列表。
+      logger.w("加载历史记录失败 (可能是新会话): $e");
+    }
+  }
+
   @override
   void dispose() {
     _textController.dispose();
     super.dispose();
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     final text = _textController.text.trim();
-    // 7. 使用 widget. 来访问 StatefulWidget 的属性
-    if (text.isNotEmpty && widget.mqttService != null) {
-      // 假设 Conversation 对象中有对方用户的 ID
-      final recipientId = widget.conversation.id; // 使用会话ID作为接收者ID
-      widget.mqttService!.sendChatMessage(recipientId, text);
+    if (text.isEmpty) return;
 
-      // (可选) 立即将自己发送的消息添加到UI
-      final myMessage = ChatMessage(
-        isMe: true,
-        text: text,
-        avatar: 'assets/image/5.jpg', // 应该使用当前登录用户的头像
-        sender: '我',
-      );
-      // 8. 使用 setState 来通知UI刷新
-      setState(() {
-        _messages.insert(0, myMessage);
-        widget.conversation.lastMessage = text; // 更新会话的最后一条消息
-        widget.conversation.time =
-            "${DateTime.now().hour}:${DateTime.now().minute}";
-      });
+    final now = DateTime.now();
+    final timeString =
+        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
 
-      _textController.clear();
+    final myMessage = ChatMessage(
+      isMe: true,
+      text: text,
+      avatar: 'assets/image/34.jpg', // 暂时使用占位头像
+      sender: '我',
+      contentType: 0, // 文本
+    );
+
+    setState(() {
+      _messages.insert(0, myMessage);
+      widget.conversation.lastMessage = text;
+      widget.conversation.time = timeString;
+    });
+
+    _textController.clear();
+
+    try {
+      await _apiService.sendMessage(widget.conversation.id, text,
+          contentType: 0, recipientId: widget.conversation.recipientId);
+    } catch (e) {
+      logger.e("发送消息失败: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("发送失败: $e"), backgroundColor: Colors.red),
+        );
+      }
     }
+  }
+
+  Future<void> _pickAndSendImage() async {
+    try {
+      // A. 选择图片
+      final XFile? pickedFile =
+          await _picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile == null) return;
+
+      // B. 上传图片到 MinIO
+      // 注意：我们在之前的 ApiService 中已经实现了 uploadFileAndGetObjectKey
+      // 它会自动获取预签名 URL 并上传文件
+      final String objectKey =
+          await _apiService.uploadFileAndGetObjectKey(pickedFile);
+
+      // C. 发送消息 (类型为 1)
+      await _sendImageMessage(objectKey);
+    } catch (e) {
+      print("图片发送失败: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("图片发送失败: $e")));
+      }
+    }
+  }
+
+  Future<void> _sendImageMessage(String objectKey) async {
+    // 乐观更新 UI
+    final myMessage = ChatMessage(
+      isMe: true,
+      text: objectKey, // 图片消息的内容是 ObjectKey
+      avatar: 'assets/image/2.jpg',
+      sender: '我',
+      contentType: 1, // <--- 标记为图片
+    );
+
+    setState(() {
+      _messages.insert(0, myMessage);
+      widget.conversation.lastMessage = "[图片]"; // 更新列表预览
+    });
+
+    // 调用 API
+    // await _apiService.sendMessage(widget.conversation.id, objectKey,
+    //     contentType: 1 // <--- 告诉后端这是图片
+    //     );
   }
 
   @override
@@ -339,12 +420,59 @@ class _ChatPanelState extends State<ChatPanel> {
   // 参数：icon - 图标数据（如Icons.emoji_emotions_outlined）
   Widget _buildInputToolIcon(IconData icon) {
     return IconButton(
-      onPressed: () {}, // 图标点击事件（暂为空实现）
+      onPressed: _pickAndSendImage, // 图标点击事件（暂为空实现）
       icon: Icon(
         icon,
         color: Colors.white70, // 图标颜色：半透明白色
         size: 22, // 图标大小22
       ),
     );
+  }
+
+  Widget _buildMessageContent(ChatMessage message) {
+    if (message.contentType == 1) {
+      // --- 图片消息 ---
+      // 获取完整的图片 URL
+      final fullUrl = _apiService.getFullAvatarUrl(message.text);
+
+      return GestureDetector(
+        onTap: () {
+          // TODO: 点击查看大图
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 200, maxHeight: 200),
+            child: Image.network(
+              fullUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  width: 200,
+                  height: 200,
+                  color: Colors.black12,
+                  child: const Center(child: CircularProgressIndicator()),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 200,
+                  height: 200,
+                  color: Colors.grey,
+                  child: const Icon(Icons.broken_image),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } else {
+      // --- 文本消息 (原有的逻辑) ---
+      return Text(
+        message.text,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
+      );
+    }
   }
 }
