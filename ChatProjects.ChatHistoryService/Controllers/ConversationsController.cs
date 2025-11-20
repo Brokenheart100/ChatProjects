@@ -6,9 +6,6 @@ using ChatProjects.ChatHistoryService.Data;
 
 namespace ChatProjects.ChatHistoryService.Controllers;
 
-
-
-
 [ApiController]
 [Route("api/conversations")]
 [Authorize]
@@ -28,6 +25,20 @@ public class ConversationsController : ControllerBase
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId == null) return Unauthorized();
+
+        // 1. 先检查这个会话在数据库里到底存不存在
+        // 注意：这里依赖我们在上一步重构中添加的 Conversations 表
+        var conversationExists = await _context.Conversations
+            .AnyAsync(c => c.Id == id);
+
+        if (!conversationExists)
+        {
+            // 如果会话压根不存在（说明是前端生成的临时 UUID），
+            // 我们不报 403，而是“温柔地”返回一个空列表。
+            // 这样前端就不会报错，后台日志也不会飘红。
+            return Ok(new List<object>());
+        }
+
 
         // 【安全关键】同样需要验证用户权限
         var isParticipant = await _context.Participants.AnyAsync(p => p.ConversationId == id && p.UserId == userId);

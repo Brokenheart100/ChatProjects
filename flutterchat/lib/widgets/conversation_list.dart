@@ -70,6 +70,7 @@ class ConversationList extends StatelessWidget {
                 final conversation = conversations[index]; // 当前索引对应的会话数据
                 final isSelected = selectedIndex == index; // 判断当前会话是否被选中
 
+                const defaultAvatar = 'assets/image/35.jpg'; // 确保这个文件存在！
                 // 可点击容器：点击时触发onTap回调，通知父组件切换选中会话
                 return GestureDetector(
                   onTap: () => onTap(index),
@@ -89,8 +90,14 @@ class ConversationList extends StatelessWidget {
                         // 会话头像：圆形，半径22，使用会话数据中的头像路径
                         CircleAvatar(
                           radius: 22,
-                          backgroundImage:
-                              AssetImage(conversation.avatar), // 本地资源头像
+                          // 如果 avatar 是空字符串，使用默认头像；否则使用 conversation.avatar
+                          backgroundImage: (conversation.avatar.isNotEmpty)
+                              ? AssetImage(conversation.avatar)
+                              : const AssetImage(defaultAvatar),
+                          // 这是一个双重保险：如果图片加载失败，或者为空，显示一个图标
+                          child: (conversation.avatar.isEmpty)
+                              ? const Icon(Icons.person, color: Colors.white)
+                              : null,
                         ),
                         const SizedBox(width: 10), // 头像与信息区域的间距10
                         // 信息区域：占满剩余空间，垂直布局（名称+时间 / 最后一条消息+静音图标）

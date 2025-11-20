@@ -84,7 +84,8 @@ var searchService = builder.AddProject<Projects.ChatProjects_SearchService>("sea
     .WithReference(userdb); // 它需要访问用户数据库
 
 var realtimeService = builder.AddProject<Projects.ChatProjects_RealtimeService>("realtimeservice")
-    //.WithReference(mqttBroker)
+    .WithReference(rabbitmq) // <--- 关键：实时服务需要消费消息队列
+    .WaitFor(rabbitmq)
     .WithEnvironment("ConnectionStrings__mqtt", mqttBroker.GetEndpoint("mqtt"))
     .WithReference(mqttBroker.GetEndpoint("mqtt"));
 

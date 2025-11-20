@@ -5,6 +5,8 @@ using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Server;
 using MQTTnet.Extensions.ManagedClient;
+using Wolverine;
+using Wolverine.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,7 +28,7 @@ builder.Services.AddSingleton<IManagedMqttClient>(sp =>
         .WithTcpServer(mqttHost, mqttPort)
         .WithClientId($"realtimeservice-{Environment.MachineName}-{Guid.NewGuid():N}")
         .WithCleanSession(false)
-        .WithCredentials("username", "password")  // 如果 EMQX 需要认证；否则移除
+        //.WithCredentials("username", "password")  // 如果 EMQX 需要认证；否则移除
         .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = false })  // 开发关闭 TLS
         .Build();
 
@@ -73,6 +75,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+builder.Host.UseWolverine(opts =>
+{
+    // 连接到 AppHost 定义的 "messaging" RabbitMQ
+    opts.UseRabbitMqUsingNamedConnection("messaging")
+        .AutoProvision();
+
+    opts.ListenToRabbitQueue("realtime-service-queue", q =>
+    {
+        q.BindExchange("user-events"); // 将队列绑定到上面声明的交换机
+    });
+  
+});
 
 var app = builder.Build();
 

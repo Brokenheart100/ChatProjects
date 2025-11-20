@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutterchat/bloc/contacts_panel/contacts_panel_bloc.dart';
+import 'package:flutterchat/bloc/conversation/conversation_bloc.dart';
 import 'package:flutterchat/models/auth_response.dart';
 import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/services/api_service.dart';
@@ -36,7 +37,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // UI 状态
   int _selectedNavIndex = 0;
-  int _selectedConversationIndex = 0;
   MainPanelState _currentMainState = MainPanelState.chat;
 
   // 数据状态
@@ -47,10 +47,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // 依赖和 BLoC 实例
   final _apiService = ApiService();
   late final ContactsPanelBloc _contactsPanelBloc;
-  StreamSubscription? _messageSubscription;
-
-  // 模拟数据
-  final List<Conversation> _conversations = [];
 
   MqttService? _mqttService;
   @override
@@ -91,49 +87,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _initializeAndConnectMqtt() {
     if (_currentUser == null) return;
-
-    // 从环境变量中获取 MQTT Broker 的地址
-    // 注意：这个环境变量由 Aspire 通过 `flutter run` 注入
-    const mqttServer = String.fromEnvironment(
-        'services__mqtt-broker__mqtt__0_host',
-        defaultValue: 'localhost');
-
+    const mqttServer =
+        String.fromEnvironment('MQTT_HOST', defaultValue: 'localhost');
     _mqttService =
         MqttService(serverAddress: mqttServer, userId: _currentUser!.userId);
     _mqttService!.connect();
-
-    // 监听所有收到的消息
-    _messageSubscription = _mqttService!.onMessageReceived.listen((message) {
-      // 在这里，您可以根据消息内容更新 UI
-      // 例如，找到对应的会话，将新消息添加到它的 messages 列表中
-      _handleIncomingMessage(message);
-    });
-  }
-
-  void _handleIncomingMessage(ChatMessageEvent message) {
-    setState(() {
-      // 简单的示例逻辑：找到发送者对应的会话并更新
-      final targetConversation = _conversations.firstWhere(
-        (c) => c.id == message.senderId,
-        orElse: () => _conversations.first, // 回退
-      );
-
-      final uiMessage = ChatMessage(
-        isMe: false,
-        sender: message.senderId, // 应该用用户名
-        text: message.text,
-        avatar: '', // 应该用用户头像
-      );
-
-      targetConversation.messages.insert(0, uiMessage);
-      targetConversation.lastMessage = message.text;
-    });
   }
 
   @override
   void dispose() {
     _contactsPanelBloc.close(); // 释放 BLoC 资源
-    _messageSubscription?.cancel(); // 取消监听
     _mqttService?.dispose();
     super.dispose();
   }
@@ -152,187 +115,101 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF363636),
-      body: Column(
-        children: [
-          CustomTitleBar(avatarUrl: _fullAvatarUrl),
-          Expanded(
-            child: Row(
-              children: [
-                LeftNavRail(
-                  selectedIndex: _selectedNavIndex,
-                  onDestinationSelected: (index) {
-                    setState(() {
-                      _selectedNavIndex = index;
-                      if (index == 0) {
-                        _currentMainState = MainPanelState.chat;
-                      } else if (index == 1) {
-                        _currentMainState = MainPanelState.contacts;
-                        // 切换到联系人主页时，通知 BLoC 清空详情
-                        _contactsPanelBloc.add(ClearSelectedContact());
-                      }
-                    });
-                  },
-                  avatarUrl: _fullAvatarUrl,
-                  onLogout: _logout,
-                ),
-                BlocProvider.value(
-                  value: _contactsPanelBloc,
-                  child:
-                      _buildMainPanel(), // 现在 _buildMainPanel 及其所有子孙都能访问 BLoC 了
-                ),
-              ],
+    // 使用 MultiBlocProvider 注入所有需要的 Bloc
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _contactsPanelBloc),
+        // 注入 ConversationBloc
+        BlocProvider(
+          create: (context) => ConversationBloc(
+            apiService: _apiService,
+            mqttService: _mqttService,
+            currentUserId: _currentUser?.userId ?? '',
+          )..add(ConversationStarted()),
+        ),
+      ],
+      child: Scaffold(
+        backgroundColor: const Color(0xFF363636),
+        body: Column(
+          children: [
+            CustomTitleBar(avatarUrl: _fullAvatarUrl),
+            Expanded(
+              child: Row(
+                children: [
+                  // 左侧导航栏
+                  LeftNavRail(
+                    selectedIndex: _selectedNavIndex,
+                    onDestinationSelected: (index) {
+                      setState(() {
+                        _selectedNavIndex = index;
+                        if (index == 0)
+                          _currentMainState = MainPanelState.chat;
+                        else if (index == 1)
+                          _currentMainState = MainPanelState.contacts;
+                      });
+                    },
+                    avatarUrl: _fullAvatarUrl,
+                    onLogout: () {}, // 填入你的登出逻辑
+                  ),
+
+                  // 主面板内容
+                  _buildBody(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    // 使用 Builder 获取包含 Bloc 的 context
+    return Expanded(
+      child: Builder(builder: (context) {
+        // 可以在这里处理 _startConversation 的回调逻辑
+        return Row(
+          children: [
+            // 左侧列表 (会话列表 OR 联系人列表)
+            _buildLeftPanel(context),
+
+            // 右侧详情 (聊天框 OR 详情页)
+            _buildRightPanel(context),
+          ],
+        );
+      }),
     );
   }
 
   void _startConversation(Contact contact) {
     setState(() {
-      // 1. 检查是否已经存在与该用户的会话
-      final existingIndex = _conversations.indexWhere(
-        (c) => c.recipientId == contact.id,
-      );
-
-      if (existingIndex != -1) {
-        // A. 如果存在，直接选中该会话
-        _selectedConversationIndex = existingIndex;
-      } else {
-        // B. 如果不存在，创建一个新的会话并插入到列表顶部
-        final newConversation = Conversation(
-          // 生成一个临时的会话ID (实际项目中通常由后端返回，或者用 UUID)
-          id: const Uuid().v4(),
-          recipientId: contact.id,
-          name: contact.remark.isNotEmpty ? contact.remark : contact.name,
-          avatar: contact.avatarUrl ?? 'assets/image/default.png', // 处理空头像
-          lastMessage: '',
-          time: "${DateTime.now().hour}:${DateTime.now().minute}",
-          messages: [], // 空消息列表
-          isMuted: false,
-        );
-
-        _conversations.insert(0, newConversation);
-        _selectedConversationIndex = 0; // 选中新创建的会话
-      }
-
-      // 2. 切换 UI 状态到“聊天”面板
+      _selectedNavIndex = 0;
       _currentMainState = MainPanelState.chat;
-      _selectedNavIndex = 0; // 左侧导航栏高亮“聊天”图标
     });
   }
 
-  Widget _buildMainPanel() {
-    switch (_currentMainState) {
-      case MainPanelState.chat:
-        if (_conversations.isEmpty) {
-          return const Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.chat_bubble_outline,
-                      size: 64, color: Colors.white24),
-                  SizedBox(height: 16),
-                  Text("暂无会话", style: TextStyle(color: Colors.white54)),
-                ],
-              ),
-            ),
-          );
-        }
-        return Expanded(
-          child: Row(
-            children: [
-              ConversationList(
-                conversations: _conversations,
-                selectedIndex: _selectedConversationIndex,
-                onTap: (index) {
-                  setState(() {
-                    _selectedConversationIndex = index;
-                  });
-                },
-                onAddFriend: () {
-                  setState(() {
-                    _selectedNavIndex = 1;
-                    _currentMainState = MainPanelState.addFriend;
-                  });
-                },
-              ),
-              Expanded(
-                child: ChatPanel(
-                  conversation: _conversations[_selectedConversationIndex],
-                  key: ValueKey(_conversations[_selectedConversationIndex].id),
-                  currentUserId: _currentUser!.userId,
-                  mqttService: _mqttService,
-                ),
-              ),
-            ],
-          ),
-        );
-
-      case MainPanelState.contacts:
-      case MainPanelState.friendRequests:
-      case MainPanelState.addFriend:
-        // 在所有与“联系人”相关的视图下，都使用 BlocBuilder 来构建
-        // BlocBuilder 会自动从父级的 BlocProvider 获取 BLoC 实例
-        return BlocBuilder<ContactsPanelBloc, ContactsPanelState>(
-          builder: (context, contactsState) {
-            return Expanded(
-              child: Row(
-                children: [
-                  // 左侧面板：现在是一个 StatelessWidget，完全由 BLoC 驱动
-                  ContactsPanel(
-                    onAddFriend: () {
-                      setState(() {
-                        _currentMainState = MainPanelState.addFriend;
-                      });
-                    },
-                    onNavigateToFriendRequests: () {
-                      setState(() {
-                        _currentMainState = MainPanelState.friendRequests;
-                        // 同时通知 BLoC 清除选中联系人
-                        context
-                            .read<ContactsPanelBloc>()
-                            .add(ClearSelectedContact());
-                      });
-                    },
-                    onContactSelected: (Contact value) {},
-                  ),
-
-                  // 右侧面板：根据 HomeScreen 的状态和 BLoC 的状态共同决定
-                  _buildContactsRightPanel(contactsState),
-                ],
-              ),
-            );
-          },
-        );
-    }
-  }
-
 // 构建左侧面板
-  Widget _buildLeftPanel() {
+  Widget _buildLeftPanel(BuildContext context) {
     switch (_currentMainState) {
       case MainPanelState.chat:
         // 聊天状态下，左侧是会话列表
-        return ConversationList(
-          conversations: _conversations,
-          selectedIndex: _selectedConversationIndex,
-          onTap: (index) {
-            setState(() {
-              _selectedConversationIndex = index;
-            });
-          },
-          onAddFriend: () {
-            // --- 核心修改：点击“+”时，切换到 contacts 状态，并让右侧显示 AddFriendPanel ---
-            // 我们通过将 _selectedNavIndex 设为 1 来确保 ContactsPanel 被加载
-            // 然后将 _currentMainState 设为 addFriend
-            setState(() {
-              _selectedNavIndex = 1; // 确保左侧导航栏高亮“联系人”
-              _currentMainState = MainPanelState.addFriend;
-              _selectedContact = null; // 清空选中的联系人
-            });
+        return BlocBuilder<ConversationBloc, ConversationState>(
+          builder: (context, state) {
+            return ConversationList(
+              conversations: state.conversations,
+              selectedIndex: state.selectedIndex,
+              onTap: (index) {
+                context
+                    .read<ConversationBloc>()
+                    .add(ConversationSelected(index));
+              },
+              onAddFriend: () {
+                setState(() {
+                  _selectedNavIndex = 1;
+                  _currentMainState = MainPanelState.addFriend;
+                });
+              },
+            );
           },
         );
 
@@ -366,33 +243,58 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// 构建右侧面板
-  Widget _buildRightPanel() {
+  Widget _buildRightPanel(BuildContext context) {
     switch (_currentMainState) {
       case MainPanelState.chat:
-        return Expanded(
-          child: ChatPanel(
-            conversation: _conversations[_selectedConversationIndex],
-            currentUserId: _currentUser!.userId,
-          ),
+        return BlocBuilder<ConversationBloc, ConversationState>(
+          builder: (context, state) {
+            final selectedConv = state.selectedConversation;
+            if (selectedConv == null) {
+              return const Expanded(
+                  child: Center(
+                      child: Text("暂无会话",
+                          style: TextStyle(color: Colors.white54))));
+            }
+            // 返回 Step 1 重构后的 ChatPanel
+            // 这里的 Key 很重要，保证切换会话时 ChatPanel 会重绘
+            return Expanded(
+              child: ChatPanel(
+                key: ValueKey(selectedConv.id),
+                conversation: selectedConv,
+                currentUserId: _currentUser!.userId,
+                mqttService: _mqttService,
+              ),
+            );
+          },
         );
-
       case MainPanelState.contacts:
-        if (_selectedContact == null) {
-          return _buildPlaceholder("请从左侧选择一个联系人查看详情");
-        } else {
-          return ContactDetailPanel(contact: _selectedContact!);
-        }
-
+        // 这里需要稍微修改一下，把 startConversation 传进去
+        // 这里可以用 BlocListener 或者直接透传回调
+        // 简单起见，我们假设 ContactDetailPanel 接收回调：
+        return BlocBuilder<ContactsPanelBloc, ContactsPanelState>(
+            builder: (context, state) {
+          if (state.selectedContact == null) return Container();
+          return ContactDetailPanel(
+            contact: state.selectedContact!,
+            onSendMessage: (contact) {
+              // 触发 ConversationBloc 的创建事件
+              context
+                  .read<ConversationBloc>()
+                  .add(ConversationCreated(contact));
+              // 切换 UI
+              setState(() {
+                _selectedNavIndex = 0;
+                _currentMainState = MainPanelState.chat;
+              });
+            },
+          );
+        });
       case MainPanelState.friendRequests:
         return const Expanded(child: FriendRequestsPanel());
 
       // --- 核心修改：添加这个 case ---
       case MainPanelState.addFriend:
         return const Expanded(child: AddFriendPanel());
-      // --------------------------------
-
-      default:
-        return _buildPlaceholder("未知状态");
     }
   }
 
