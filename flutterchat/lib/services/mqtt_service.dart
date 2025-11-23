@@ -52,7 +52,6 @@ class MqttService {
     _client.port = 1883;
     _client.logging(on: kDebugMode);
     _client.onConnected = _onConnected;
-    // ... 其他回调 ...
   }
 
   Future<void> connect() async {

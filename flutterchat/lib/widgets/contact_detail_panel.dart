@@ -4,10 +4,8 @@ import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
 import 'package:flutterchat/screens/home_screen.dart'; // 为了获取 mainPanelStateProvider
 
-// 1. 改为 ConsumerStatefulWidget
 class ContactDetailPanel extends ConsumerStatefulWidget {
   final Contact contact;
-  // 删除了 onSendMessage 回调
 
   const ContactDetailPanel({
     super.key,
@@ -253,16 +251,20 @@ class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
         _buildButton('音视频通话'),
         const SizedBox(width: 12),
         ElevatedButton(
-          onPressed: () {
-            // 1. 创建或选中会话
+          onPressed: () async {
+            // 1. 先执行业务逻辑：创建或选中会话
+            // 注意：这里不需要 await，也不要放进 microtask，直接同步调用
+            // 因为 Riverpod 的 state 更新是同步通知的
             ref
                 .read(conversationListProvider.notifier)
                 .createOrSelect(widget.contact);
 
-            // 2. 切换 UI 状态 (从联系人页切到聊天页)
-            ref.read(selectedNavIndexProvider.notifier).state = 0; // 0 = 聊天 Tab
+            // 2. 紧接着切换 UI 状态
+            // Riverpod 会在这一帧结束时统一处理这些状态变化
+            ref.read(selectedNavIndexProvider.notifier).state =
+                0; // 选中左侧“聊天”Tab
             ref.read(mainPanelStateProvider.notifier).state =
-                MainPanelState.chat;
+                MainPanelState.chat; // 切换主视图
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFC9C960),

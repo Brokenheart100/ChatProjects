@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:flutterchat/models/conversation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutterchat/models/auth_response.dart';
 import 'package:flutterchat/models/chat_message.dart';
+import 'package:flutterchat/models/conversation.dart'; // 确保引入了 Conversation
 import 'package:flutterchat/models/friend_request.dart';
 import 'package:flutterchat/models/user_search_result.dart';
-import 'package:flutterchat/services/api_client.dart'; // 引入刚才写的文件
+import 'package:flutterchat/services/api_client.dart';
 import 'package:flutterchat/services/logger_service.dart';
 
 /// 文件上传信息模型
@@ -22,12 +22,13 @@ class UploadInfo {
 }
 
 class ApiService {
-  // 1. 核心改动：不再自己 new Dio，而是获取 ApiClient 单例中的 dio
-  // 这样就自动拥有了拦截器、BaseUrl 和 SSL 配置
+  // 获取单例 ApiClient 中的 dio 实例
   Dio get _dio => ApiClient().dio;
-  final Map<String, UserSearchResult> _userCache = {};
 
-  ApiService(); // 构造函数现在是空的，非常轻量
+  // 构造函数
+  ApiService();
+
+  // --- 认证相关 ---
 
   Future<AuthResponse> login(
       {required String username, required String password}) async {
@@ -39,7 +40,6 @@ class ApiService {
 
       if (response.statusCode == 200 && response.data != null) {
         final authResponse = AuthResponse.fromJson(response.data);
-        // 核心改动：调用 ApiClient 来保存 Token
         await ApiClient().saveToken(authResponse.token);
         return authResponse;
       } else {
@@ -73,10 +73,8 @@ class ApiService {
 
   Future<AuthResponse> getSession() async {
     try {
-      // 拦截器会自动加上 Authorization 头
       final response = await _dio.get('/gateway/auth/session');
       final authResponse = AuthResponse.fromJson(response.data);
-      // 刷新 Token
       await ApiClient().saveToken(authResponse.token);
       return authResponse;
     } on DioException catch (e) {
@@ -85,9 +83,10 @@ class ApiService {
   }
 
   Future<void> logout() async {
-    // 核心改动：调用 ApiClient 来清除 Token
     await ApiClient().removeToken();
   }
+
+  // --- 会话列表 (核心：后端聚合模式) ---
 
   Future<List<Conversation>> getConversations(
       {required String currentUserId}) async {
@@ -95,7 +94,7 @@ class ApiService {
       final response = await _dio.get('/gateway/conversations');
       final List<dynamic> data = response.data;
 
-      // 现在 map 是同步的，非常快
+      // 后端已经聚合了 Name 和 Avatar，前端直接转换即可，速度极快
       return data.map((json) {
         final timeStr = json['lastMessageAt'] != null
             ? DateTime.parse(json['lastMessageAt'])
@@ -104,12 +103,13 @@ class ApiService {
                 .substring(11, 16)
             : '';
 
-        // 后端直接返回了 name 和 avatar，直接用！
         return Conversation(
           id: json['id'].toString(),
           recipientId: json['recipientId'] ?? '',
-          name: json['name'] ?? '未知', // 后端聚合好的名字
-          avatar: getFullAvatarUrl(json['avatar']), // 后端聚合好的头像Key
+          // 直接使用后端返回的名字，如果没有则显示"未知"
+          name: json['name'] ?? '未知用户',
+          // 拼接头像 URL
+          avatar: getFullAvatarUrl(json['avatar']),
           lastMessage: json['lastMessage'] ?? '',
           time: timeStr,
           messages: [],
@@ -120,10 +120,11 @@ class ApiService {
     }
   }
 
+  // --- 历史消息 ---
+
   Future<List<ChatMessage>> getMessageHistory(String conversationId,
       {required String currentUserId}) async {
     try {
-      // 注意：queryParameters 会自动拼接到 url 后面
       final response = await _dio.get(
         '/gateway/conversations/$conversationId/messages',
         queryParameters: {'limit': 50},
@@ -131,25 +132,24 @@ class ApiService {
 
       final List<dynamic> data = response.data;
 
+      // 调试日志
       if (data.isNotEmpty) {
-        logger.i("🔍 后端返回的第一条数据: ${data[0]}");
-      } else {
-        logger.i("🔍 后端返回了空列表 []");
+        // logger.d("🔍 历史消息示例: ${data[0]}");
       }
 
       return data.map((json) {
         final senderId = json['senderId'].toString();
         return ChatMessage(
-          isMe: senderId == currentUserId,
+          isMe:
+              senderId.toLowerCase() == currentUserId.toLowerCase(), // 忽略大小写比较
           sender: senderId,
           text: json['content'],
-          // contentType: 1 代表图片，0 代表文本
           contentType: json['contentType'] ?? 0,
-          avatar: '', // 暂时留空，由 UI 层处理缓存
+          avatar: '', // 详情页头像暂留空，可由 UI 根据 senderId 统一处理
         );
       }).toList();
     } on DioException catch (e) {
-      // 如果是 404 可能是新会话，返回空列表，不要报错
+      // 404/403 视为新会话，返回空列表
       if (e.response?.statusCode == 404 || e.response?.statusCode == 403) {
         return [];
       }
@@ -174,6 +174,8 @@ class ApiService {
     }
   }
 
+  // --- 文件上传 ---
+
   Future<UploadInfo> getUploadUrl(String fileName) async {
     try {
       final response = await _dio.get(
@@ -187,32 +189,24 @@ class ApiService {
   }
 
   Future<String> uploadFileAndGetObjectKey(XFile file) async {
-    // 1. 获取上传链接
     final uploadInfo = await getUploadUrl(file.name);
-
-    // 2. 执行上传
-    // 注意：这里不能用 _dio！因为 _dio 有 BaseUrl 还有 Token 拦截器。
-    // 上传到 MinIO 是一个完整的 Presigned URL，且不需要（甚至不能带）后端 API 的 Token。
     await _uploadToMinioRaw(uploadInfo.uploadUrl, file);
-
     return uploadInfo.objectKey;
   }
 
   Future<void> _uploadToMinioRaw(String uploadUrl, XFile file) async {
     try {
       final fileBytes = await file.readAsBytes();
-
-      // 创建一个“纯净”的 Dio 实例，专门用于这次上传
+      // 使用纯净 Dio 实例上传，避免带入 Token
       final cleanDio = Dio();
-
       await cleanDio.put(
         uploadUrl,
-        data: Stream.fromIterable(fileBytes.map((e) => [e])), // 流式上传
+        data: Stream.fromIterable(fileBytes.map((e) => [e])),
         options: Options(
           headers: {
             Headers.contentLengthHeader: fileBytes.length,
-            // 根据文件后缀判断类型，这里暂写死 jpeg，实际可以用 lookupMimeType
-            Headers.contentTypeHeader: 'image/jpeg',
+            Headers.contentTypeHeader:
+                'image/jpeg', // 简单处理，生产环境应用 lookupMimeType
           },
         ),
       );
@@ -222,6 +216,8 @@ class ApiService {
       throw '文件上传失败';
     }
   }
+
+  // --- 好友/搜索 ---
 
   Future<List<UserSearchResult>> searchUsers(String query) async {
     try {
@@ -234,15 +230,6 @@ class ApiService {
           .toList();
     } on DioException catch (e) {
       throw _handleError(e, 'searchUsers');
-    }
-  }
-
-  Future<void> sendFriendRequest(String recipientId) async {
-    try {
-      await _dio.post('/gateway/friends/requests',
-          data: {'recipientId': recipientId});
-    } on DioException catch (e) {
-      throw _handleError(e, 'sendFriendRequest');
     }
   }
 
@@ -263,7 +250,7 @@ class ApiService {
           await _dio.get('/gateway/friends/requests/pending/count');
       return response.data['count'] as int;
     } catch (e) {
-      return 0; // 出错默认 0
+      return 0;
     }
   }
 
@@ -278,6 +265,11 @@ class ApiService {
     }
   }
 
+  Future<void> sendFriendRequest(String recipientId) async {
+    await _dio
+        .post('/gateway/friends/requests', data: {'recipientId': recipientId});
+  }
+
   Future<void> acceptFriendRequest(String requestId) async {
     await _dio.post('/gateway/friends/requests/$requestId/accept');
   }
@@ -286,6 +278,8 @@ class ApiService {
     await _dio.post('/gateway/friends/requests/$requestId/reject');
   }
 
+  // --- 辅助方法 ---
+
   Future<void> saveToken(String token) async {
     await ApiClient().saveToken(token);
   }
@@ -293,9 +287,7 @@ class ApiService {
   String getFullAvatarUrl(String? objectKey) {
     if (objectKey == null || objectKey.isEmpty) return '';
     if (objectKey.startsWith('http')) return objectKey;
-
-    // 注意：这里的 MinIO 地址如果和 API 不一样，需要单独配置
-    // 开发环境通常 localhost:9000
+    // 注意：这里硬编码了 localhost，真机调试需改为 IP (如 10.0.2.2) 或配置项
     const minioUrl = 'http://localhost:9000/avatars';
     return '$minioUrl/$objectKey';
   }

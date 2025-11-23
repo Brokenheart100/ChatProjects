@@ -41,22 +41,18 @@ void main() async {
   AuthResponse? authResponse;
 
   try {
-    final accountToAutoLogin = await accountService.getAccountForAutoLogin();
+    final accountService = container.read(accountServiceProvider);
+    final account = await accountService.getAccountForAutoLogin();
 
-    if (accountToAutoLogin != null) {
-      logger.i("main: 找到自动登录账户: ${accountToAutoLogin.username}");
-      await apiService.saveToken(accountToAutoLogin.token);
-      authResponse = await apiService.getSession();
-
-      // 核心：将获取到的用户信息注入到 Riverpod 的 currentUserProvider 中
-      // 这样整个 App 的其他 Provider (如 MQTT) 就能自动获取到用户 ID 了
-      container.read(currentUserProvider.notifier).setUser(authResponse);
-
+    if (account != null) {
+      final api = container.read(apiServiceProvider);
+      await api.saveToken(account.token);
+      final user = await api.getSession();
+      container.read(currentUserProvider.notifier).setUser(user);
       initialRoute = '/home';
-      logger.i("main: 自动登录成功！");
     }
   } catch (e) {
-    logger.w("main: 自动登录失败. 错误: $e");
+    print("自动登录失败: $e");
   }
 
   runApp(

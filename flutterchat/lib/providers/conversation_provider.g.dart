@@ -23,12 +23,12 @@ final selectedConversationIndexProvider =
 );
 
 typedef _$SelectedConversationIndex = AutoDisposeNotifier<int>;
-String _$conversationListHash() => r'eb61ab4e0369705678bb2271ac64b3bfa0b775bd';
+String _$conversationListHash() => r'ac1edd38e67e103e74495a53486af82276202871';
 
 /// See also [ConversationList].
 @ProviderFor(ConversationList)
-final conversationListProvider = AutoDisposeAsyncNotifierProvider<
-    ConversationList, List<Conversation>>.internal(
+final conversationListProvider =
+    AsyncNotifierProvider<ConversationList, List<Conversation>>.internal(
   ConversationList.new,
   name: r'conversationListProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -38,6 +38,6 @@ final conversationListProvider = AutoDisposeAsyncNotifierProvider<
   allTransitiveDependencies: null,
 );
 
-typedef _$ConversationList = AutoDisposeAsyncNotifier<List<Conversation>>;
+typedef _$ConversationList = AsyncNotifier<List<Conversation>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
