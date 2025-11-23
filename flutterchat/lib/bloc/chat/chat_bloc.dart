@@ -10,10 +10,6 @@ import 'package:flutterchat/services/logger_service.dart';
 // 导入MQTT服务类（用于实时接收消息的长连接服务）
 import 'package:flutterchat/services/mqtt_service.dart';
 import 'package:image_picker/image_picker.dart';
-// 导入聊天相关的事件类（定义所有可能触发的事件：初始化、发送文本、接收消息等）
-import 'chat_event.dart';
-// 导入聊天相关的状态类（定义UI需要的状态数据：消息列表、加载状态、错误信息等）
-import 'chat_state.dart';
 
 export 'chat_event.dart';
 export 'chat_state.dart';
@@ -129,27 +125,24 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   /// 处理【聊天初始化事件】（ChatStarted）
   /// 触发时机：进入聊天页面时，加载历史消息
+  // 1. 初始化：只加载当前会话的消息历史
   Future<void> _onStarted(ChatStarted event, Emitter<ChatState> emit) async {
-    // 1. 更新状态为"加载中"（UI可显示加载动画）
     emit(state.copyWith(status: ChatStatus.loading));
     try {
-      // 2. 调用API获取历史消息
       final history = await _apiService.getMessageHistory(
-        _conversationId, // 聊天对象ID
-        currentUserId: _currentUserId, // 当前用户ID（用于区分消息归属）
+        _conversationId,
+        currentUserId: _currentUserId,
       );
-      // 3. 加载成功：更新状态为"成功"，并设置历史消息列表
+
+      // 成功加载，更新消息列表
       emit(state.copyWith(
         status: ChatStatus.success,
         messages: history,
       ));
     } catch (e) {
-      // 4. 加载失败：打印日志，特殊处理（新会话可能无历史消息，故显示空列表而非错误页）
       logger.w("加载历史消息失败: $e");
-      emit(state.copyWith(
-        status: ChatStatus.success,
-        messages: [], // 失败时显示空列表
-      ));
+      // 加载失败（或者新会话无历史），显示空列表，状态设为 success 以避免错误页
+      emit(state.copyWith(status: ChatStatus.success, messages: []));
     }
   }
 

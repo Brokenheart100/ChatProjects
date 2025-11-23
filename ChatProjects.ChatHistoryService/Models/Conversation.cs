@@ -21,4 +21,5 @@ public class Conversation
     public long? LastMessageId { get; set; } // 关联 Message 的雪花 ID
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public ICollection<Participant> Participants { get; set; } = new List<Participant>();
 }

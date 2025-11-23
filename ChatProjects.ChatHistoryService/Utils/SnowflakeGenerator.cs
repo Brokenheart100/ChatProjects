@@ -1,42 +1,43 @@
-﻿namespace ChatProjects.ChatHistoryService.Utils;
+﻿using IdGen;
+
+namespace ChatProjects.ChatHistoryService.Utils;
 
 public static class SnowflakeGenerator
 {
-    // 这里使用 IdGen 库是最推荐的，但为了不让您报错，我们先用一个基于时间的简单实现
-    // 在生产环境建议使用 NuGet: IdGen
+    private static readonly IdGenerator _generator;
 
-    private static long _lastTimestamp = -1L;
-    private static long _sequence = 0L;
-    private static readonly object _lock = new object();
+    static SnowflakeGenerator()
+    {
+        // 1. 获取机器 ID (GeneratorId/WorkerId)
+        // 在分布式部署(K8s/Docker)中，每个实例必须有唯一的 ID (0-1023)。
+        // 我们尝试从环境变量获取，如果没有配置则默认为 0。
+        var workerIdEnv = Environment.GetEnvironmentVariable("WORKER_ID");
+        int generatorId = 0;
 
+        if (!string.IsNullOrEmpty(workerIdEnv) && int.TryParse(workerIdEnv, out int id))
+        {
+            generatorId = id;
+        }
+
+        // 2. 配置 Epoch (纪元/起始时间)
+        // 这是一个基准时间，ID 是基于这个时间偏移生成的。
+        // 建议设置为项目开始的大致时间（例如 2024-01-01），这样 ID 可以使用大约 69 年。
+        var epoch = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        // 3. 配置 ID 结构 (使用默认结构即可：41位时间戳, 10位机器ID, 12位序列号)
+        var structure = new IdStructure(41, 10, 12);
+
+        // 4. 实例化 Generator
+        var options = new IdGeneratorOptions(structure, new DefaultTimeSource(epoch));
+        _generator = new IdGenerator(generatorId, options);
+    }
+
+    /// <summary>
+    /// 生成下一个分布式唯一 ID (long)
+    /// </summary>
     public static long NextId()
     {
-        lock (_lock)
-        {
-            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-            if (timestamp == _lastTimestamp)
-            {
-                _sequence = (_sequence + 1) & 4095;
-                if (_sequence == 0)
-                {
-                    // 等待下一毫秒
-                    while (timestamp <= _lastTimestamp)
-                    {
-                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                    }
-                }
-            }
-            else
-            {
-                _sequence = 0;
-            }
-
-            _lastTimestamp = timestamp;
-
-            // 简单模拟雪花算法结构：时间戳 << 22 | 序列号
-            // 注意：这里没有机器ID，分布式高并发下可能重复，但开发环境足够
-            return (timestamp << 22) | _sequence;
-        }
+        // IdGen 内部已经处理了线程安全(lock)和时钟回拨问题
+        return _generator.CreateId();
     }
 }

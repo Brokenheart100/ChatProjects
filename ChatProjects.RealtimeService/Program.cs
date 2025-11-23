@@ -1,4 +1,4 @@
-using ChatProjects.RealtimeService.Hubs;
+ï»¿using ChatProjects.RealtimeService.Hubs;
 using ChatProjects.RealtimeService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using MQTTnet;
@@ -12,53 +12,61 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.Services.AddSingleton<MqttBrokerConnection>();
+builder.Services.AddHostedService<MqttBrokerConnection>();
 
-// 1.ÊÖ¶¯´´½¨ºÍ×¢Èë IManagedMqttClient£¨Ìæ´ú AddManagedMqttClient£©
+
 builder.Services.AddSingleton<IManagedMqttClient>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<IManagedMqttClient>>();
-    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();  // ¸ÄÓÃ LoggerFactory
-                                                                  // ´Ó Aspire ÅäÖÃ¶ÁÈ¡ mqtt-broker ĞÅÏ¢£¨×Ô¶¯×¢Èë£©
-    var mqttHost = builder.Configuration["services:mqtt-broker:endpoints:mqtt:host"] ?? "mqtt-broker";
-    var mqttPort = int.Parse(builder.Configuration["services:mqtt-broker:endpoints:mqtt:port"] ?? "1883");
+    var config = sp.GetRequiredService<IConfiguration>(); // è·å–é…ç½®
 
-// ¹¹½¨ ClientOptions
+    // === æ ¸å¿ƒä¿®å¤ï¼šç»Ÿä¸€åœ°å€è§£æé€»è¾‘ ===
+    string host = "localhost";
+    int port = 1883;
+
+    var connStr = config.GetConnectionString("mqtt");
+    if (!string.IsNullOrEmpty(connStr))
+    {
+        var uri = new Uri(connStr);
+        host = uri.Host;
+        port = uri.Port;
+    }
+    else
+    {
+        var h = config["services:mqtt-broker:endpoints:mqtt:host"];
+        if (!string.IsNullOrEmpty(h)) host = h;
+        if (int.TryParse(config["services:mqtt-broker:endpoints:mqtt:port"], out var p)) port = p;
+    }
+    // =================================
+
     var clientOptions = new MqttClientOptionsBuilder()
-        .WithTcpServer(mqttHost, mqttPort)
-        .WithClientId($"realtimeservice-{Environment.MachineName}-{Guid.NewGuid():N}")
+        .WithTcpServer(host, port)
+        .WithClientId($"realtime-init-{Guid.NewGuid()}")
         .WithCleanSession(false)
-        //.WithCredentials("username", "password")  // Èç¹û EMQX ĞèÒªÈÏÖ¤£»·ñÔòÒÆ³ı
-        .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = false })  // ¿ª·¢¹Ø±Õ TLS
+        .WithTls(new MqttClientOptionsBuilderTlsParameters { UseTls = false })
         .Build();
 
-// ¹¹½¨ ManagedOptions
     var managedOptions = new ManagedMqttClientOptionsBuilder()
         .WithClientOptions(clientOptions)
         .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
-        .WithMaxPendingMessages(1000)
-        .WithPendingMessagesOverflowStrategy(MqttPendingMessagesOverflowStrategy.DropOldestQueuedMessage)
         .Build();
 
-// ´´½¨ Managed Client
     var factory = new MqttFactory();
     var managedClient = factory.CreateManagedMqttClient();
 
-// Æô¶¯£¨Í¬²½Æô¶¯£¬±ÜÃâ ArgumentNullException£©
-    managedClient.StartAsync(managedOptions).GetAwaiter().GetResult();
+    // å¼‚æ­¥å¯åŠ¨ï¼Œä¸é˜»å¡
+    //_ = managedClient.StartAsync(managedOptions);
 
     return managedClient;
 });
-
-// 2. ×¢²áÄúµÄ MqttBrokerConnection£¨ÏÖÔÚÄÜ×¢Èë IManagedMqttClient£©
-builder.Services.AddSingleton<MqttBrokerConnection>();
+// 2. æ³¨å†Œæ‚¨çš„ MqttBrokerConnectionï¼ˆç°åœ¨èƒ½æ³¨å…¥ IManagedMqttClientï¼‰
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // ... (ÄúµÄ TokenValidationParameters ÅäÖÃ)
+        // ... (æ‚¨çš„ TokenValidationParameters é…ç½®)
 
-        // ¹Ø¼ü£ºÈÃ SignalR ÄÜ¹»´Ó QueryString ÖĞ¶ÁÈ¡ Token
-        // ÒòÎª WebSocket Á¬½ÓÔÚ½¨Á¢Ê±ÎŞ·¨ÏñÆÕÍ¨ HTTP ÇëÇóÒ»ÑùÉèÖÃ Authorization Í·
+        // å…³é”®ï¼šè®© SignalR èƒ½å¤Ÿä» QueryString ä¸­è¯»å– Token
+        // å› ä¸º WebSocket è¿æ¥åœ¨å»ºç«‹æ—¶æ— æ³•åƒæ™®é€š HTTP è¯·æ±‚ä¸€æ ·è®¾ç½® Authorization å¤´
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -78,13 +86,13 @@ builder.Services.AddOpenApi();
 
 builder.Host.UseWolverine(opts =>
 {
-    // Á¬½Óµ½ AppHost ¶¨ÒåµÄ "messaging" RabbitMQ
+    // è¿æ¥åˆ° AppHost å®šä¹‰çš„ "messaging" RabbitMQ
     opts.UseRabbitMqUsingNamedConnection("messaging")
         .AutoProvision();
 
     opts.ListenToRabbitQueue("realtime-service-queue", q =>
     {
-        q.BindExchange("user-events"); // ½«¶ÓÁĞ°ó¶¨µ½ÉÏÃæÉùÃ÷µÄ½»»»»ú
+        q.BindExchange("chat-events"); // å°†é˜Ÿåˆ—ç»‘å®šåˆ°ä¸Šé¢å£°æ˜çš„äº¤æ¢æœº
     });
   
 });

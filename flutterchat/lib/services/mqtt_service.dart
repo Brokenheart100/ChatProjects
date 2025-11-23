@@ -5,23 +5,29 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:flutterchat/services/logger_service.dart';
 
-// 定义一个简单的事件类
+// 1. 修改 Event 类
 class ChatMessageEvent {
   final String senderId;
   final String text;
   final DateTime timestamp;
+  final String conversationId; // <--- 新增字段
 
-  ChatMessageEvent(
-      {required this.senderId, required this.text, required this.timestamp});
+  ChatMessageEvent({
+    required this.senderId,
+    required this.text,
+    required this.timestamp,
+    required this.conversationId, // <---
+  });
 
   factory ChatMessageEvent.fromJson(Map<String, dynamic> json) {
     return ChatMessageEvent(
-      // 注意：后端 SignalR/MQTT 推送的 JSON 字段名要对应
       senderId: json['senderId'] ?? '',
       text: json['text'] ?? '',
       timestamp: json['sentAt'] != null
           ? DateTime.parse(json['sentAt'])
           : DateTime.now(),
+      conversationId:
+          json['conversationId']?.toString() ?? '', // <--- 解析后端传回的 ID
     );
   }
 }

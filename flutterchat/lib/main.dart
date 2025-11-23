@@ -1,57 +1,76 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // 引入 Riverpod
 import 'package:flutterchat/models/auth_response.dart';
+import 'package:flutterchat/providers/services_provider.dart'; // 引入我们在上一节定义的 Provider
 import 'package:flutterchat/services/account_service.dart';
 import 'package:flutterchat/services/api_service.dart';
 import 'package:flutterchat/services/logger_service.dart';
 import 'package:window_manager/window_manager.dart';
-import './screens/login_screen.dart'; // 引入登录屏幕
+import './screens/login_screen.dart';
 import './screens/register_screen.dart';
-import 'screens/home_screen.dart'; // 引入注册屏幕
+import 'screens/home_screen.dart';
 
 void main() async {
-  // 确保 Flutter 和 window_manager 初始化
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
-  // 设置窗口选项，创建一个小巧、不可拉伸、居中的窗口
   WindowOptions windowOptions = const WindowOptions(
     size: Size(1024, 768),
-    center: true, // 窗口居中
-    backgroundColor: Colors.transparent, // 设置背景透明以显示圆角 (如果需要)
+    center: true,
+    backgroundColor: Colors.transparent,
     skipTaskbar: false,
     windowButtonVisibility: false,
   );
 
-  // 等待窗口准备好后显示
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
   });
+
+  // --- Riverpod 初始化逻辑 ---
+  // 创建一个容器，用于在 App 启动前操作 Provider 状态
+  final container = ProviderContainer();
+
+  // 虽然我们现在有了 ApiService 的 Provider，但在 main 函数这种
+  // 极早期的初始化阶段，直接 new 一个实例来做检查也是没问题的，
+  // 或者我们可以从容器里读取：final apiService = container.read(apiServiceProvider);
   final apiService = ApiService();
   final accountService = AccountService();
-  String initialRoute = '/login'; // 默认路由为登录页
+
+  String initialRoute = '/login';
   AuthResponse? authResponse;
+
   try {
-    // 1. 查找被标记为“自动登录”的账户
     final accountToAutoLogin = await accountService.getAccountForAutoLogin();
 
     if (accountToAutoLogin != null) {
       logger.i("main: 找到自动登录账户: ${accountToAutoLogin.username}");
-      // 2. 使用该账户的 Token 来恢复会话
-      //    我们需要先将 token 保存到 ApiService 能读取的地方
       await apiService.saveToken(accountToAutoLogin.token);
       authResponse = await apiService.getSession();
+
+      // 核心：将获取到的用户信息注入到 Riverpod 的 currentUserProvider 中
+      // 这样整个 App 的其他 Provider (如 MQTT) 就能自动获取到用户 ID 了
+      container.read(currentUserProvider.notifier).setUser(authResponse);
+
       initialRoute = '/home';
       logger.i("main: 自动登录成功！");
     }
   } catch (e) {
     logger.w("main: 自动登录失败. 错误: $e");
-    // 失败则保持默认路由 /login
   }
-  runApp(MyApp(
-    initialRoute: initialRoute,
-    authResponse: authResponse,
-  ));
+
+  runApp(
+    // 使用 UncontrolledProviderScope 将我们预配置好的 container 传递给 Flutter
+    UncontrolledProviderScope(
+      container: container,
+      child: MyApp(
+        initialRoute: initialRoute,
+        // authResponse 其实不需要传了，因为已经在 Provider 里了，
+        // 但为了兼容旧的 HomeScreen 构造函数，我们先传进去
+        authResponse: authResponse,
+      ),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -69,15 +88,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter QQ',
       debugShowCheckedModeBanner: false,
-      initialRoute: initialRoute, // 设置初始路由为登录屏幕
+      initialRoute: initialRoute,
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) {
-          // 尝试从路由参数获取用户信息，如果为 null (自动登录场景)，
-          // 则使用我们从 main 函数传递过来的 authResponse
+          // 如果路由参数为空，使用 main 传进来的
           final args =
               ModalRoute.of(context)?.settings.arguments ?? authResponse;
+          // 注意：HomeScreen 内部现在应该优先使用 ref.watch(currentUserProvider)
           return HomeScreen(authResponse: args as AuthResponse?);
         },
       },

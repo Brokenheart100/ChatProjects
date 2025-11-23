@@ -109,21 +109,28 @@ class ConversationList extends StatelessWidget {
                               // 第一行：会话名称 + 最后一条消息时间
                               Row(
                                 children: [
-                                  // 会话名称
-                                  Text(
-                                    conversation.name,
-                                    style: const TextStyle(
-                                      color: Colors.white, // 名称颜色白色，突出显示
-                                      fontSize: 14, // 名称大小14，清晰可见
+                                  // 1. 使用 Expanded 包裹名称，让它占据剩余空间
+                                  Expanded(
+                                    child: Text(
+                                      conversation.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                      maxLines: 1, // 限制一行
+                                      overflow: TextOverflow
+                                          .ellipsis, // 超出显示省略号 (...)
                                     ),
                                   ),
-                                  const Spacer(), // 填充空间，将时间推至右侧
-                                  // 最后一条消息的时间
+
+                                  const SizedBox(width: 8), // 给名称和时间之间一点间距
+
+                                  // 2. 时间保持不变，它会紧贴右边（或者被 Spacer 推过去，取决于你的布局）
                                   Text(
                                     conversation.time,
                                     style: const TextStyle(
-                                      color: Colors.white54, // 时间颜色半透明，次要信息
-                                      fontSize: 12, // 时间大小12，不抢眼
+                                      color: Colors.white54,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ],

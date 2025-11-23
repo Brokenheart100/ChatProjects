@@ -12,6 +12,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
+// 注册一个命名 HTTP Client，基地址指向 Aspire 中的 "userservice"
+builder.Services.AddHttpClient("UserService", client =>
+{
+    // 注意：这里的 base address 必须和 AppHost 里的名字一致
+    client.BaseAddress = new Uri("http://userservice");
+});
+
 builder.AddNpgsqlDbContext<ChatHistoryDbContext>("chathistorydb");
 
 

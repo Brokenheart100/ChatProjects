@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutterchat/models/conversation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutterchat/models/auth_response.dart';
 import 'package:flutterchat/models/chat_message.dart';
@@ -24,12 +25,9 @@ class ApiService {
   // 1. 核心改动：不再自己 new Dio，而是获取 ApiClient 单例中的 dio
   // 这样就自动拥有了拦截器、BaseUrl 和 SSL 配置
   Dio get _dio => ApiClient().dio;
-
-  // 移除 _tokenKey，因为它现在由 ApiClient 管理
+  final Map<String, UserSearchResult> _userCache = {};
 
   ApiService(); // 构造函数现在是空的，非常轻量
-
-  // --- 认证相关 ---
 
   Future<AuthResponse> login(
       {required String username, required String password}) async {
@@ -91,7 +89,36 @@ class ApiService {
     await ApiClient().removeToken();
   }
 
-  // --- 聊天/消息相关 ---
+  Future<List<Conversation>> getConversations(
+      {required String currentUserId}) async {
+    try {
+      final response = await _dio.get('/gateway/conversations');
+      final List<dynamic> data = response.data;
+
+      // 现在 map 是同步的，非常快
+      return data.map((json) {
+        final timeStr = json['lastMessageAt'] != null
+            ? DateTime.parse(json['lastMessageAt'])
+                .toLocal()
+                .toString()
+                .substring(11, 16)
+            : '';
+
+        // 后端直接返回了 name 和 avatar，直接用！
+        return Conversation(
+          id: json['id'].toString(),
+          recipientId: json['recipientId'] ?? '',
+          name: json['name'] ?? '未知', // 后端聚合好的名字
+          avatar: getFullAvatarUrl(json['avatar']), // 后端聚合好的头像Key
+          lastMessage: json['lastMessage'] ?? '',
+          time: timeStr,
+          messages: [],
+        );
+      }).toList();
+    } on DioException catch (e) {
+      throw _handleError(e, 'getConversations');
+    }
+  }
 
   Future<List<ChatMessage>> getMessageHistory(String conversationId,
       {required String currentUserId}) async {
@@ -103,6 +130,13 @@ class ApiService {
       );
 
       final List<dynamic> data = response.data;
+
+      if (data.isNotEmpty) {
+        logger.i("🔍 后端返回的第一条数据: ${data[0]}");
+      } else {
+        logger.i("🔍 后端返回了空列表 []");
+      }
+
       return data.map((json) {
         final senderId = json['senderId'].toString();
         return ChatMessage(
@@ -139,8 +173,6 @@ class ApiService {
       throw _handleError(e, 'sendMessage');
     }
   }
-
-  // --- 文件上传相关 (重点修改) ---
 
   Future<UploadInfo> getUploadUrl(String fileName) async {
     try {
@@ -190,8 +222,6 @@ class ApiService {
       throw '文件上传失败';
     }
   }
-
-  // --- 好友/搜索相关 ---
 
   Future<List<UserSearchResult>> searchUsers(String query) async {
     try {
@@ -256,15 +286,10 @@ class ApiService {
     await _dio.post('/gateway/friends/requests/$requestId/reject');
   }
 
-  // --- 辅助方法 ---
-
-  // 移除 saveToken，改为调用 ApiClient().saveToken
-  // 这里的 saveToken 可以作为一个 wrapper 方便旧代码调用
   Future<void> saveToken(String token) async {
     await ApiClient().saveToken(token);
   }
 
-  // 为了兼容旧代码，保留这个 Helper
   String getFullAvatarUrl(String? objectKey) {
     if (objectKey == null || objectKey.isEmpty) return '';
     if (objectKey.startsWith('http')) return objectKey;

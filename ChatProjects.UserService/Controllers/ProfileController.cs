@@ -86,4 +86,5 @@ public class ProfileController : ControllerBase
         var publicProfile = new UserProfileDto(user.UserId, user.UserName!, user.Email!, user.DisplayName);
         return Ok(publicProfile);
     }
+
 }

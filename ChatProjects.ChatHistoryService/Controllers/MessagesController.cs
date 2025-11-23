@@ -18,27 +18,45 @@ public class MessagesController : ControllerBase
 {
     private readonly ChatHistoryDbContext _context;
     private readonly IMessageBus _messageBus;
+    // 1. 注入 Logger
+    private readonly ILogger<MessagesController> _logger;
 
-    public MessagesController(ChatHistoryDbContext context, IMessageBus messageBus)
+    public MessagesController(
+        ChatHistoryDbContext context,
+        IMessageBus messageBus,
+        ILogger<MessagesController> logger)
     {
         _context = context;
         _messageBus = messageBus;
+        _logger = logger;
     }
 
     [HttpPost]
     public async Task<IActionResult> SendMessage([FromBody] SendMessageDto dto)
     {
-        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (currentUserId == null) return Unauthorized();
+        // 📝 入口日志
+        _logger.LogInformation("🚀 [SendMessage] 收到发送消息请求. 目标会话: {ConvId}, 类型: {Type}", dto.ConversationId, dto.ContentType);
 
-        // 1. 获取执行策略 (解决 NpgsqlRetryingExecutionStrategy 报错的关键)
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserId == null)
+        {
+            _logger.LogWarning("🚫 [SendMessage] 未授权访问: 无法获取 UserID");
+            return Unauthorized();
+        }
+
+        _logger.LogInformation("👤 [SendMessage] 操作用户: {UserId}", currentUserId);
+
+        // 1. 获取执行策略
         var strategy = _context.Database.CreateExecutionStrategy();
 
         // 2. 在执行策略中运行事务逻辑
         return await strategy.ExecuteAsync(async () =>
         {
+            _logger.LogInformation("🛡️ [SendMessage] 开始执行数据库策略 (Execution Strategy)...");
+
             // 开启事务
             using var transaction = await _context.Database.BeginTransactionAsync();
+            _logger.LogInformation("📝 [SendMessage] 数据库事务已开启");
 
             try
             {
@@ -48,35 +66,42 @@ public class MessagesController : ControllerBase
                 // ---------------------------------------------------------
                 // 1. 会话检查与创建逻辑
                 // ---------------------------------------------------------
+                _logger.LogDebug("🔍 [SendMessage] 检查用户是否在会话参与者列表中...");
 
                 var isParticipant = await _context.Participants
                     .AnyAsync(p => p.ConversationId == conversationId && p.UserId == currentUserId);
 
-                if (!isParticipant)
+                if (isParticipant)
                 {
+                    _logger.LogDebug("✅ [SendMessage] 用户是现有会话成员");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ [SendMessage] 用户不在会话中 (可能是新会话或假ID)，尝试自动创建逻辑...");
+
                     if (!string.IsNullOrEmpty(dto.RecipientId))
                     {
+                        _logger.LogInformation("🕵️ [SendMessage] 尝试查找两人是否已存在私聊会话. RecipientId: {RecipientId}", dto.RecipientId);
+
                         // A. 尝试查找现有私聊
-                        var existingConversationId = await _context.Participants
-                            .Where(p => p.UserId == currentUserId)
-                            .Join(_context.Participants.Where(p => p.UserId == dto.RecipientId),
-                                  p1 => p1.ConversationId,
-                                  p2 => p2.ConversationId,
-                                  (p1, p2) => p1.ConversationId)
-                            .Join(_context.Conversations.Where(c => c.Type == ConversationType.Private),
-                                  id => id,
-                                  c => c.Id,
-                                  (id, c) => c.Id)
+                        var existingConversationId = await _context.Conversations
+                            .Where(c => c.Type == ConversationType.Private)
+                            .Where(c => c.Participants.Any(p => p.UserId == currentUserId) &&
+                                        c.Participants.Any(p => p.UserId == dto.RecipientId))
+                            .Select(c => c.Id)
                             .FirstOrDefaultAsync();
 
                         if (existingConversationId != Guid.Empty)
                         {
+                            _logger.LogInformation("🤝 [SendMessage] 找到已存在的私聊会话: {Id}. 修正前端传来的 ID", existingConversationId);
                             conversationId = existingConversationId;
                         }
                         else
                         {
                             // B. 创建新会话
                             conversationId = dto.ConversationId == Guid.Empty ? Guid.NewGuid() : dto.ConversationId;
+
+                            _logger.LogInformation("✨ [SendMessage] 创建全新的私聊会话. ID: {Id}", conversationId);
 
                             var newConversation = new Conversation
                             {
@@ -92,14 +117,12 @@ public class MessagesController : ControllerBase
                             _context.Participants.Add(new Participant { ConversationId = conversationId, UserId = dto.RecipientId });
 
                             isNewConversation = true;
+                            _logger.LogInformation("👥 [SendMessage] 已添加参与者: {User1}, {User2}", currentUserId, dto.RecipientId);
                         }
                     }
                     else
                     {
-                        // 这里不能直接 return，因为我们在 Lambda 表达式中
-                        // 需要抛出异常或返回特定的 Result，但在 Controller Action 中，
-                        // 直接返回 IActionResult 是最方便的。
-                        // 为了跳出 ExecuteAsync，我们直接 return 一个 ForbidResult
+                        _logger.LogWarning("⛔ [SendMessage] 拒绝访问: 用户不在会话中且未提供 RecipientId");
                         return StatusCode(403, "非会话成员且未指定接收人，无法发送消息。");
                     }
                 }
@@ -110,6 +133,8 @@ public class MessagesController : ControllerBase
 
                 var messageId = SnowflakeGenerator.NextId();
                 var now = DateTime.UtcNow;
+
+                _logger.LogInformation("🆔 [SendMessage] 生成消息 ID: {MsgId}", messageId);
 
                 var message = new Message
                 {
@@ -122,6 +147,7 @@ public class MessagesController : ControllerBase
                 };
 
                 _context.Messages.Add(message);
+                _logger.LogInformation("💾 [SendMessage] 消息实体已添加到 Context");
 
                 // ---------------------------------------------------------
                 // 3. 更新会话快照
@@ -129,6 +155,7 @@ public class MessagesController : ControllerBase
 
                 if (!isNewConversation)
                 {
+                    _logger.LogInformation("🔄 [SendMessage] 使用 ExecuteUpdateAsync 更新现有会话快照...");
                     await _context.Conversations
                         .Where(c => c.Id == conversationId)
                         .ExecuteUpdateAsync(calls => calls
@@ -139,6 +166,7 @@ public class MessagesController : ControllerBase
                 }
                 else
                 {
+                    _logger.LogInformation("🆕 [SendMessage] 更新新创建会话的内存实体快照...");
                     var entry = _context.ChangeTracker.Entries<Conversation>()
                         .FirstOrDefault(e => e.Entity.Id == conversationId);
                     if (entry != null)
@@ -152,6 +180,8 @@ public class MessagesController : ControllerBase
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                _logger.LogInformation("✅ [SendMessage] 数据库事务提交成功! 消息已持久化.");
+
                 // ---------------------------------------------------------
                 // 4. 异步事件推送
                 // ---------------------------------------------------------
@@ -164,7 +194,9 @@ public class MessagesController : ControllerBase
                     message.SentAt
                 );
 
+                _logger.LogInformation("📢 [SendMessage] 正在通过 Wolverine 发布 MessageSent 事件...");
                 await _messageBus.PublishAsync(evt);
+                _logger.LogInformation("📨 [SendMessage] 事件发布完成");
 
                 return Ok(new
                 {
@@ -172,10 +204,12 @@ public class MessagesController : ControllerBase
                     RealConversationId = conversationId
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "🔥 [SendMessage] 发生严重错误，正在回滚事务...");
                 await transaction.RollbackAsync();
-                throw; // 抛出异常让外层处理或重试
+                _logger.LogInformation("🔙 [SendMessage] 事务回滚完成");
+                throw;
             }
         });
     }

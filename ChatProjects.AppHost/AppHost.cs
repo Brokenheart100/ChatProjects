@@ -10,13 +10,14 @@ var rabbitmq = builder.AddRabbitMQ("messaging")
     .WithDataVolume("rabbitmq_data");
 
 var emqxAdminUser = builder.AddParameter("emqx-admin-user");
-var emqxAdminPassword = builder.AddParameter("emqx-admin-password", secret: true);
+var emqxAdminPassword = builder.AddParameter("emqx-admin-password");
 
 var mqttBroker = builder.AddContainer("mqtt-broker", "emqx/emqx:latest")
     .WithHttpEndpoint(port: 18083, targetPort: 18083, name: "emqx-dashboard")
     .WithEndpoint(port: 1883, targetPort: 1883, name: "mqtt")
+    .WithVolume("mqttBroker-data", "/data")
     .WithEnvironment("EMQX_ADMIN_USER", emqxAdminUser)
-    .WithEnvironment("EMQX_ADMIN_PASSWORD", emqxAdminPassword);
+    .WithEnvironment("EMQX_DASHBOARD__DEFAULT_PASSWORD", emqxAdminPassword);
 
 var postgresServer = builder.AddPostgres("postgres-db")
     .WithEndpoint(1234, 1234, name: "postgresServer",isExternal:true)
@@ -95,7 +96,8 @@ var chatHistoryService = builder.AddProject<Projects.ChatProjects_ChatHistorySer
     .WithReference(rabbitmq)
     .WaitFor(rabbitmq)
     .WithReference(chatHistoryDb)// 引用自己的数据库
-    .WaitFor(postgresServer);
+    .WaitFor(postgresServer)
+    .WithReference(userService);
 
 
 builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
@@ -106,12 +108,6 @@ builder.AddProject<Projects.ChatProjects_GatewayService>("gatewayservice")
     .WithReference(searchService)
     .WithReference(userService)
     .WithReference(chatHistoryService);
-
-
-
-
-
-
 
 builder.Build().Run();
 

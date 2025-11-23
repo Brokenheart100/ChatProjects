@@ -19,13 +19,16 @@ using Microsoft.EntityFrameworkCore;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize] // 所有接口需登录后访问（依赖JWT认证）
-public class FriendsController(UserDbContext context, ILogger<FriendsController> logger) : ControllerBase
+public class FriendsController(UserDbContext context, ILogger<FriendsController> logger, RealtimeServiceApiClient realtimeApiClient) : ControllerBase
 {
     // 数据库上下文：用于操作用户、好友请求、好友关系等数据
     private readonly UserDbContext _context = context;
     // 日志组件：记录操作日志和异常信息
     private readonly ILogger<FriendsController> _logger = logger;
-    private readonly RealtimeServiceApiClient _realtimeApiClient;
+
+
+
+    private readonly RealtimeServiceApiClient _realtimeApiClient = realtimeApiClient;
     /// <summary>
     /// 发送好友请求接口
     /// 接口路径：POST /api/friends/requests
@@ -116,7 +119,27 @@ public class FriendsController(UserDbContext context, ILogger<FriendsController>
             return StatusCode(500, "服务器内部错误，请稍后重试。");
         }
 
-        // TODO：通过消息队列（如RabbitMQ）或实时通信（如SignalR/Orleans）通知接收者有新请求
+        // ================= 核心新增：发送实时通知 =================
+        // 获取发送者的信息，以便通知接收者是谁发的
+        var senderProfile = await _context.UserProfiles.FindAsync(senderId);
+        var senderName = senderProfile?.DisplayName ?? senderProfile?.UserName ?? "有人";
+
+        // 构建通知数据
+        var notificationData = new
+        {
+            RequestId = newRequest.Id,
+            SenderId = senderId,
+            SenderName = senderName,
+            SenderAvatar = senderProfile?.AvatarUrl,
+            SentAt = newRequest.CreatedAt
+        };
+
+        // 调用 RealtimeService 推送
+        // 注意：这是一个“发后即忘”的操作，不需要 await 阻塞主流程太久，或者可以用 Task.Run
+        _ = _realtimeApiClient.PushToUserAsync(recipientId, new PushNotification(
+            Type: "FriendRequestReceived", // 前端根据这个 Type 处理
+            Data: notificationData
+        ));
         // 示例：_messageBus.Publish(new FriendRequestReceivedEvent(senderId, recipientId));
 
         return Ok("好友请求已发送");

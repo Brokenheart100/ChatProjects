@@ -1,0 +1,30 @@
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace ChatProjects.ChatHistoryService.Migrations
+{
+    /// <inheritdoc />
+    public partial class AddParticipantsNavigation : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddForeignKey(
+                name: "FK_Participants_Conversations_ConversationId",
+                table: "Participants",
+                column: "ConversationId",
+                principalTable: "Conversations",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropForeignKey(
+                name: "FK_Participants_Conversations_ConversationId",
+                table: "Participants");
+        }
+    }
+}

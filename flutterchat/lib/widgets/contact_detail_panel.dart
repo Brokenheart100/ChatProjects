@@ -1,56 +1,54 @@
 import 'package:flutter/material.dart';
-import '../models/contact.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutterchat/models/contact.dart';
+import 'package:flutterchat/providers/conversation_provider.dart';
+import 'package:flutterchat/screens/home_screen.dart'; // 为了获取 mainPanelStateProvider
 
-// --- 核心改动 1: 将 Widget 转换为 StatefulWidget ---
-class ContactDetailPanel extends StatefulWidget {
+// 1. 改为 ConsumerStatefulWidget
+class ContactDetailPanel extends ConsumerStatefulWidget {
   final Contact contact;
-  final ValueChanged<Contact>? onSendMessage;
+  // 删除了 onSendMessage 回调
+
   const ContactDetailPanel({
     super.key,
     required this.contact,
-    this.onSendMessage, // --- 新增：构造函数参数 ---
   });
 
   @override
-  State<ContactDetailPanel> createState() => _ContactDetailPanelState();
+  ConsumerState<ContactDetailPanel> createState() => _ContactDetailPanelState();
 }
 
-class _ContactDetailPanelState extends State<ContactDetailPanel> {
-  // --- 核心改动 2: 将状态变量移入 State 类 ---
+class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
   String? _selectedGroup;
   final List<String> _groupOptions = ['我的好友', '家人', '同事'];
+
   @override
   void initState() {
     super.initState();
-    // 在 initState 中初始化状态，而不是在 build 方法中
-    // _selectedGroup = widget.contact.groupName;
+    // 初始化分组逻辑保持不变
+    _updateSelectedGroup();
   }
 
   @override
   void didUpdateWidget(ContactDetailPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 当父组件传入的 contact 对象发生变化时 (例如用户切换了选中的好友)，
-    // 我们也需要更新 _selectedGroup
     if (widget.contact != oldWidget.contact) {
       _updateSelectedGroup();
     }
   }
 
   void _updateSelectedGroup() {
-    // 如果 contact 的 groupName 存在于我们的选项中，就设为默认值，否则为 null
     _selectedGroup = (widget.contact.groupName != null &&
             _groupOptions.contains(widget.contact.groupName))
         ? widget.contact.groupName
         : null;
   }
 
-  // --- 核心改动 3: 在 build 方法中，用 widget.contact 访问传入的数据 ---
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
         color: const Color(0xFF54514E),
-        // 使用 ListView 代替 Column，以获得自然的滚动效果
         child: ListView(
           padding: const EdgeInsets.all(30.0),
           children: [
@@ -75,7 +73,9 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
     );
   }
 
-  // --- 核心改动 5: 实现下拉框构建方法，并正确使用 setState ---
+  // ... 中间大部分 UI 构建方法保持不变，请直接复制原来的 ...
+  // 这里为了节省篇幅，我只列出修改了的地方，请你在实际操作时保留原来的 _buildHeader, _buildPersonalInfo 等方法
+
   Widget _buildGroupDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -101,7 +101,6 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
                     fontFamily: 'Microsoft YaHei'),
                 dropdownColor: const Color(0xFF3E3C39),
                 onChanged: (String? newValue) {
-                  // setState 在 State 类中是合法的，它会通知 Flutter 重建 UI
                   setState(() {
                     _selectedGroup = newValue;
                   });
@@ -121,12 +120,12 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
     );
   }
 
+  // 必须保留 Header, PersonalInfo 等方法，直接从旧代码复制过来即可
   Widget _buildHeader() {
     return Row(
       children: [
         CircleAvatar(
           radius: 45,
-          // 使用 NetworkImage 加载网络头像
           backgroundImage: (widget.contact.avatarUrl != null &&
                   widget.contact.avatarUrl!.isNotEmpty)
               ? NetworkImage(widget.contact.avatarUrl!)
@@ -140,20 +139,17 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 使用 name 属性
             Text(widget.contact.name,
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            // QQ 号码暂时用占位符
             const Text('QQ (暂无)',
                 style: TextStyle(color: Colors.white70, fontSize: 14)),
             const SizedBox(height: 8),
             Row(
               children: [
-                // 状态暂时用静态占位符
                 const Icon(Icons.circle, color: Colors.grey, size: 16),
                 const SizedBox(width: 6),
                 const Text('离线',
@@ -172,37 +168,28 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
         widget.contact.birthday == null) {
       return const SizedBox.shrink();
     }
-
-    // --- 核心修复：使用 Wrap 代替 Row ---
     return Wrap(
-      spacing: 8.0, // 子组件之间的水平间距
-      runSpacing: 4.0, // 行与行之间的垂直间距
-      crossAxisAlignment: WrapCrossAlignment.center, // 让同一行的所有子组件垂直居中
+      spacing: 8.0,
+      runSpacing: 4.0,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         if (widget.contact.gender != null) ...[
           Icon(widget.contact.gender == '男' ? Icons.male : Icons.female,
               color: Colors.blue, size: 16),
           Text(' ${widget.contact.gender}',
               style: const TextStyle(color: Colors.white, fontSize: 14)),
-          // 我们不再需要手动添加 Divider，间距由 spacing 控制
-          // _buildDivider(),
         ],
-        if (widget.contact.age != null) ...[
+        if (widget.contact.age != null)
           Text('${widget.contact.age}岁',
               style: const TextStyle(color: Colors.white, fontSize: 14)),
-          // _buildDivider(),
-        ],
-        if (widget.contact.birthday != null) ...[
+        if (widget.contact.birthday != null)
           Text(widget.contact.birthday!,
               style: const TextStyle(color: Colors.white, fontSize: 14)),
-          // _buildDivider(),
-        ],
         if (widget.contact.constellation != null)
           Text(widget.contact.constellation!,
               style: const TextStyle(color: Colors.white, fontSize: 14)),
       ],
     );
-    // ------------------------------------
   }
 
   Widget _buildLevel() {
@@ -256,6 +243,7 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
     );
   }
 
+  // 2. 核心修改：ActionButtons 直接调用 Provider
   Widget _buildActionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -266,7 +254,15 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
         const SizedBox(width: 12),
         ElevatedButton(
           onPressed: () {
-            widget.onSendMessage?.call(widget.contact);
+            // 1. 创建或选中会话
+            ref
+                .read(conversationListProvider.notifier)
+                .createOrSelect(widget.contact);
+
+            // 2. 切换 UI 状态 (从联系人页切到聊天页)
+            ref.read(selectedNavIndexProvider.notifier).state = 0; // 0 = 聊天 Tab
+            ref.read(mainPanelStateProvider.notifier).state =
+                MainPanelState.chat;
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFC9C960),
@@ -293,9 +289,4 @@ class _ContactDetailPanelState extends State<ContactDetailPanel> {
       child: Text(text),
     );
   }
-
-  Widget _buildDivider() => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8.0),
-        child: Text('|', style: TextStyle(color: Colors.white30)),
-      );
 }
