@@ -1,5 +1,4 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/models/contact_group.dart';
 import 'package:flutterchat/providers/services_provider.dart';
@@ -12,10 +11,11 @@ class ExpandedGroups extends _$ExpandedGroups {
   Set<String> build() => {'我的好友'};
   void toggle(String name) {
     final current = Set<String>.from(state);
-    if (current.contains(name))
+    if (current.contains(name)) {
       current.remove(name);
-    else
+    } else {
       current.add(name);
+    }
     state = current;
   }
 }

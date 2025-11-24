@@ -18,13 +18,29 @@ class ChatMessage {
     this.contentType = 0,
   });
 
+  ChatMessage copyWith({
+    String? avatar,
+    String? sender,
+    String? text,
+    bool? isMe,
+    int? contentType,
+  }) {
+    return ChatMessage(
+      avatar: avatar ?? this.avatar,
+      sender: sender ?? this.sender,
+      text: text ?? this.text,
+      isMe: isMe ?? this.isMe,
+      contentType: contentType ?? this.contentType,
+    );
+  }
+
   factory ChatMessage.fromJson(Map<String, dynamic> json,
       {required String currentUserId}) {
     final bool isMe = json['senderId'] == currentUserId;
 
     return ChatMessage(
       // 暂时使用占位符，真实项目中需要根据 senderId 查询用户头像
-      avatar: isMe ? 'assets/image/1.jpg' : 'assets/image/2.jpg',
+      avatar: '',
       sender: json['senderId'], // 暂时直接用ID，真实项目需要查询用户名
       text: json['content'],
       isMe: isMe,

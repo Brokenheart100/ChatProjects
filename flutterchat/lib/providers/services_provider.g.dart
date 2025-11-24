@@ -63,20 +63,22 @@ final mqttServiceProvider = Provider<MqttService>.internal(
 );
 
 typedef MqttServiceRef = ProviderRef<MqttService>;
-String _$mqttStreamHash() => r'00ac3f92d52a496e1bf32d47f8f654330ff75c76';
+String _$mqttMessageStreamHash() => r'bcd5070208884176e9b888739a689156d3a99a31';
 
-/// See also [mqttStream].
-@ProviderFor(mqttStream)
-final mqttStreamProvider = AutoDisposeStreamProvider<ChatMessageEvent>.internal(
-  mqttStream,
-  name: r'mqttStreamProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$mqttStreamHash,
+/// See also [mqttMessageStream].
+@ProviderFor(mqttMessageStream)
+final mqttMessageStreamProvider =
+    AutoDisposeStreamProvider<ChatMessageEvent>.internal(
+  mqttMessageStream,
+  name: r'mqttMessageStreamProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$mqttMessageStreamHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef MqttStreamRef = AutoDisposeStreamProviderRef<ChatMessageEvent>;
+typedef MqttMessageStreamRef = AutoDisposeStreamProviderRef<ChatMessageEvent>;
 String _$currentUserHash() => r'72a475de9a71f7528268885da8d8e7d8ec41f407';
 
 /// See also [CurrentUser].

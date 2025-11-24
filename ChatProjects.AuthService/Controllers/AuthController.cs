@@ -63,6 +63,7 @@ public class AuthController : ControllerBase
             newUser.Id,
             newUser.UserName,
             newUser.Email,
+            newUser.AvatarUrl,
             DateTime.UtcNow
         );
         await _messageBus.PublishAsync(userRegisteredEvent);

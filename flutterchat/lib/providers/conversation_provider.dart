@@ -23,7 +23,7 @@ class ConversationList extends _$ConversationList {
     if (currentUser == null) return [];
 
     // 监听 MQTT 更新列表
-    ref.listen(mqttStreamProvider, (prev, next) {
+    ref.listen(mqttMessageStreamProvider, (prev, next) {
       next.whenData((event) {
         _updateOrAdd(event.conversationId, event.text);
       });
@@ -78,6 +78,21 @@ class ConversationList extends _$ConversationList {
     } else {
       ref.invalidateSelf(); // 重新拉取
     }
+  }
+
+  void delete(String conversationId) {
+    final currentList = List<Conversation>.from(state.value ?? []);
+
+    // 1. 从列表中移除
+    currentList.removeWhere((c) => c.id == conversationId);
+
+    // 2. 更新状态
+    state = AsyncData(currentList);
+
+    // 3. (可选) 处理选中项逻辑
+    // 如果删除的是当前选中的会话，需要重置选中索引或者清空右侧
+    // 这里简单处理：如果列表空了或者删除了当前项，重置索引
+    // 实际项目中可能需要通知 UI 清空右侧面板
   }
 
   String _formatTime(DateTime time) {

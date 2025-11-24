@@ -18,7 +18,6 @@ public class MessagesController : ControllerBase
 {
     private readonly ChatHistoryDbContext _context;
     private readonly IMessageBus _messageBus;
-    // 1. 注入 Logger
     private readonly ILogger<MessagesController> _logger;
 
     public MessagesController(

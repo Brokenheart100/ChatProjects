@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // 1. 引入 Riverpod
+import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutterchat/models/chat_message.dart';
 import 'package:flutterchat/models/conversation.dart';
-// 引入我们生成的 ChatProvider (确保你运行了 build_runner)
 import 'package:flutterchat/providers/chat_provider.dart';
 import 'package:flutterchat/providers/services_provider.dart'; // 用于获取 apiService
 
@@ -38,10 +38,11 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    // Riverpod 调用方式：
-    // ref.read(provider.notifier).method()
-    ref.read(chatProvider(widget.conversation.id).notifier).sendText(text);
-
+    ref
+        .read(chatProvider(
+                widget.conversation.id, widget.conversation.recipientId)
+            .notifier)
+        .sendText(text);
     _textController.clear();
   }
 
@@ -51,8 +52,11 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       final XFile? pickedFile =
           await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null && mounted) {
+        // ✅ 核心修改：传入两个参数
         ref
-            .read(chatProvider(widget.conversation.id).notifier)
+            .read(chatProvider(
+                    widget.conversation.id, widget.conversation.recipientId)
+                .notifier)
             .sendImage(pickedFile);
       }
     } catch (e) {
@@ -62,19 +66,18 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
 
   @override
   Widget build(BuildContext context) {
-    // 3. 监听数据状态 (AsyncValue)
-    // 当 conversation.id 变化时，Riverpod 会自动切换到对应的 Provider 实例
-    final chatAsyncValue = ref.watch(chatProvider(widget.conversation.id));
+    final chatAsyncValue = ref.watch(
+        chatProvider(widget.conversation.id, widget.conversation.recipientId));
 
-    // 4. 监听错误事件 (替代 BlocListener)
-    // 如果 Provider 状态变为 Error (例如发送失败)，在这里处理
-    ref.listen(chatProvider(widget.conversation.id), (previous, next) {
+    // 监听错误
+    ref.listen(
+        chatProvider(widget.conversation.id, widget.conversation.recipientId),
+        (previous, next) {
       if (next is AsyncError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("发生错误: ${next.error}"),
-            backgroundColor: Colors.red,
-          ),
+              content: Text("发生错误: ${next.error}"),
+              backgroundColor: Colors.red),
         );
       }
     });
@@ -231,10 +234,9 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
             child: _buildMessageContent(message),
           ),
           const SizedBox(width: 12),
-          CircleAvatar(
-            backgroundImage: AssetImage(message.avatar.isNotEmpty
-                ? message.avatar
-                : 'assets/image/42.jpg'),
+          CustomCircleAvatar(
+            avatarUrl: message.avatar,
+            radius: 18,
           ),
         ],
       ),
@@ -242,23 +244,25 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   }
 
   Widget _buildOthersMessage(ChatMessage message) {
+    final displayAvatar =
+        message.avatar.isNotEmpty ? message.avatar : widget.conversation.avatar;
+    final displayName = widget.conversation.name;
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            backgroundImage: AssetImage(message.avatar.isNotEmpty
-                ? message.avatar
-                : 'assets/image/default.png'),
+          CustomCircleAvatar(
+            avatarUrl: displayAvatar,
+            radius: 18,
           ),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                message.sender,
+                displayName,
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               const SizedBox(height: 4),

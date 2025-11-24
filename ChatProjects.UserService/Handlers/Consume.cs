@@ -29,7 +29,8 @@ public class UserEventHandler
         {
             UserId = message.UserId,
             UserName = message.UserName,
-            DisplayName = message.UserName // 默认将用户名作为昵称
+            DisplayName = message.UserName, // 默认将用户名作为昵称
+            AvatarUrl = message.AvatarUrl
         };
 
         dbContext.UserProfiles.Add(newUserProfile);

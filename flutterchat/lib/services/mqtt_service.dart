@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutterchat/models/chat_message.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:flutterchat/services/logger_service.dart';
@@ -28,6 +29,15 @@ class ChatMessageEvent {
           : DateTime.now(),
       conversationId:
           json['conversationId']?.toString() ?? '', // <--- 解析后端传回的 ID
+    );
+  }
+  ChatMessage toMessage(String currentUserId) {
+    return ChatMessage(
+      isMe: senderId == currentUserId,
+      sender: senderId,
+      text: text,
+      avatar: '', // 暂时留空，由 UI 处理
+      contentType: 0, // 默认为文本，如果后端传了 type 也要解析
     );
   }
 }

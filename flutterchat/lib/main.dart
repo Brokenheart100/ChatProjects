@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // 引入 Riverpod
 import 'package:flutterchat/models/auth_response.dart';
 import 'package:flutterchat/providers/services_provider.dart'; // 引入我们在上一节定义的 Provider
-import 'package:flutterchat/services/account_service.dart';
-import 'package:flutterchat/services/api_service.dart';
 import 'package:flutterchat/services/logger_service.dart';
 import 'package:window_manager/window_manager.dart';
 import './screens/login_screen.dart';
@@ -34,8 +32,6 @@ void main() async {
   // 虽然我们现在有了 ApiService 的 Provider，但在 main 函数这种
   // 极早期的初始化阶段，直接 new 一个实例来做检查也是没问题的，
   // 或者我们可以从容器里读取：final apiService = container.read(apiServiceProvider);
-  final apiService = ApiService();
-  final accountService = AccountService();
 
   String initialRoute = '/login';
   AuthResponse? authResponse;
@@ -52,7 +48,7 @@ void main() async {
       initialRoute = '/home';
     }
   } catch (e) {
-    print("自动登录失败: $e");
+    logger.e("自动登录失败: $e");
   }
 
   runApp(

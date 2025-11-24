@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/providers/contact_provider.dart'; // 确保这个文件已创建并生成了 .g.dart
 import 'package:flutterchat/screens/home_screen.dart'; // 为了获取 selectedContactProvider
+import 'package:flutterchat/services/logger_service.dart';
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:flutterchat/widgets/custom_search_field.dart';
 
@@ -148,7 +149,8 @@ class ContactsPanel extends ConsumerWidget {
   Widget _buildContactTile(
       WidgetRef ref, Contact contact, Contact? selectedContact) {
     final isSelected = selectedContact?.id == contact.id;
-
+    logger.i(
+        "👤 [ContactsPanel] 渲染联系人: ${contact.name}, 头像URL: '${contact.avatarUrl}'");
     return GestureDetector(
       onTap: () {
         // ✅ 核心逻辑：直接在组件内部更新全局 Provider，不需要回调
@@ -163,7 +165,8 @@ class ContactsPanel extends ConsumerWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text(contact.remark,
-                  style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  style: const TextStyle(
+                      color: Color.fromARGB(255, 20, 20, 20), fontSize: 14)),
             ),
           ],
         ),

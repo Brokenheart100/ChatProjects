@@ -104,13 +104,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  // ... 以下 UI 构建代码保持完全不变，直接复制原来的即可 ...
-  // 为了节省篇幅，我只列出 build 方法的结构，请确保你保留了完整的 UI 代码
-
   @override
   Widget build(BuildContext context) {
-    // 在这里你可以通过 ref.read(apiServiceProvider) 获取 ApiService 来生成头像 URL
-    final apiService = ref.read(apiServiceProvider);
+    ref.read(apiServiceProvider);
 
     return Scaffold(
       body: DragToMoveArea(
@@ -168,7 +164,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withAlpha(77),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text('多账号登录',
@@ -295,7 +291,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withAlpha(77),
             borderRadius: BorderRadius.circular(4.0),
             border: Border.all(color: Colors.grey.shade600, width: 1),
           ),

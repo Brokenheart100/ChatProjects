@@ -1,19 +1,20 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutterchat/providers/services_provider.dart';
 import 'package:flutterchat/services/logger_service.dart';
 import 'package:window_manager/window_manager.dart';
-import '../services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 
-class RegisterScreen extends StatefulWidget {
+class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
-  final _apiService = ApiService(); // 创建服务实例
+class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+//  final _apiService = ApiService(); // 创建服务实例
   bool _isLoading = false; // 用于控制加载状态
   String _loadingText = '正在注册...';
   XFile? _avatarFile;
@@ -23,7 +24,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  // --- 核心新增 2: 图片选择逻辑 ---
   Future<void> _pickAvatar() async {
     final picker = ImagePicker();
     try {
@@ -58,15 +58,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String? avatarObjectKey;
 
     try {
+      final apiService = ref.read(apiServiceProvider);
       // --- 步骤 1 & 2: 如果有头像，先上传头像 ---
       if (_avatarFile != null) {
         setState(() => _loadingText = '正在上传头像...');
         logger.i('Avatar selected, starting upload process...');
 
         // 1. 获取上传许可
-        await _apiService.getUploadUrl(_avatarFile!.name);
+        await apiService.getUploadUrl(_avatarFile!.name);
         avatarObjectKey =
-            await _apiService.uploadFileAndGetObjectKey(_avatarFile!);
+            await apiService.uploadFileAndGetObjectKey(_avatarFile!);
 
         logger.i('Avatar upload completed. ObjectKey: $avatarObjectKey');
       }
@@ -75,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _loadingText = '正在创建账号...');
       logger.i('Calling register API...');
 
-      await _apiService.register(
+      await apiService.register(
         username: _usernameController.text,
         email: _emailController.text,
         password: _passwordController.text,

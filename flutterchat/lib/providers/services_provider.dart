@@ -1,5 +1,4 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/services/api_client.dart';
 import 'package:flutterchat/services/api_service.dart';
 import 'package:flutterchat/services/account_service.dart';
@@ -44,8 +43,9 @@ MqttService mqttService(MqttServiceRef ref) {
 }
 
 // 4. MQTT 消息流 (方便监听)
+// ✅ 核心修复：函数名改为 mqttMessageStream，对应 mqttMessageStreamProvider
 @riverpod
-Stream<ChatMessageEvent> mqttStream(MqttStreamRef ref) {
+Stream<ChatMessageEvent> mqttMessageStream(MqttMessageStreamRef ref) {
   final service = ref.watch(mqttServiceProvider);
   return service.onMessageReceived;
 }

@@ -3,15 +3,15 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 class CustomCacheManager {
   static const key = 'customCacheKey';
 
-  static CacheManager instance = CacheManager(
+  // 使用单例模式，确保全局共用一个缓存管理器
+  static final CacheManager instance = CacheManager(
     Config(
       key,
-      // 核心配置：定义缓存的行为
-      stalePeriod: const Duration(days: 15), // 缓存有效期，例如15天
-      maxNrOfCacheObjects: 100, // 最多缓存100个对象
-
-      // 关键！我们不需要 fileService，让它自己处理 HTTP 请求
-      // fileService: HttpFileService(),
+      // 缓存配置
+      stalePeriod: const Duration(days: 15), // 缓存有效期 15 天
+      maxNrOfCacheObjects: 200, // 稍微调大一点，聊天头像可能很多
+      repo: JsonCacheInfoRepository(databaseName: key),
+      fileService: HttpFileService(),
     ),
   );
 }

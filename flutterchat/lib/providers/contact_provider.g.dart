@@ -37,7 +37,7 @@ final contactListProvider =
 );
 
 typedef ContactListRef = AutoDisposeFutureProviderRef<List<ContactGroup>>;
-String _$expandedGroupsHash() => r'fe54a30cda1cf1ffc17e6e879822b5a231d9a95a';
+String _$expandedGroupsHash() => r'5a36a98b87b01c200a2971059a11971c5d2b5db6';
 
 /// See also [ExpandedGroups].
 @ProviderFor(ExpandedGroups)
