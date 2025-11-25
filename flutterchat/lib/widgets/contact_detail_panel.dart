@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
-import 'package:flutterchat/screens/home_screen.dart'; // 为了获取 mainPanelStateProvider
+import 'package:go_router/go_router.dart';
 
 class ContactDetailPanel extends ConsumerStatefulWidget {
   final Contact contact;
@@ -241,7 +241,7 @@ class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
     );
   }
 
-  // 2. 核心修改：ActionButtons 直接调用 Provider
+  // 3. 核心修改：ActionButtons 使用 GoRouter 跳转
   Widget _buildActionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -251,20 +251,16 @@ class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
         _buildButton('音视频通话'),
         const SizedBox(width: 12),
         ElevatedButton(
-          onPressed: () async {
-            // 1. 先执行业务逻辑：创建或选中会话
-            // 注意：这里不需要 await，也不要放进 microtask，直接同步调用
-            // 因为 Riverpod 的 state 更新是同步通知的
+          onPressed: () {
+            // 1. 业务逻辑：在会话列表中选中该联系人
+            // (createOrSelect 会更新 selectedConversationIndexProvider)
             ref
                 .read(conversationListProvider.notifier)
                 .createOrSelect(widget.contact);
 
-            // 2. 紧接着切换 UI 状态
-            // Riverpod 会在这一帧结束时统一处理这些状态变化
-            ref.read(selectedNavIndexProvider.notifier).state =
-                0; // 选中左侧“聊天”Tab
-            ref.read(mainPanelStateProvider.notifier).state =
-                MainPanelState.chat; // 切换主视图
+            // 2. 路由跳转：切换到聊天 Tab
+            // GoRouter 会自动识别这是一个 ShellRoute 分支切换
+            context.go('/chat');
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFC9C960),

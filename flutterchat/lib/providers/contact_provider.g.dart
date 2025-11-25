@@ -22,7 +22,7 @@ final friendRequestCountProvider = AutoDisposeFutureProvider<int>.internal(
 );
 
 typedef FriendRequestCountRef = AutoDisposeFutureProviderRef<int>;
-String _$contactListHash() => r'46286228b60a0ed118b824f66440d93cbc348354';
+String _$contactListHash() => r'bb73334cdb5d4c71dcc2d0243ecf612b584230e5';
 
 /// See also [contactList].
 @ProviderFor(contactList)

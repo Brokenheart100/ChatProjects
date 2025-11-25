@@ -28,6 +28,18 @@ class ApiService {
   // 构造函数
   ApiService();
 
+// 创建群聊
+  Future<void> createGroup(String groupName, List<String> memberIds) async {
+    try {
+      await _dio.post('/gateway/groups', data: {
+        'groupName': groupName,
+        'memberIds': memberIds,
+      });
+      logger.i("✅ 群聊创建成功");
+    } on DioException catch (e) {
+      throw _handleError(e, 'createGroup');
+    }
+  }
   // --- 认证相关 ---
 
   Future<AuthResponse> login(
@@ -93,7 +105,6 @@ class ApiService {
     try {
       final response = await _dio.get('/gateway/conversations');
       final List<dynamic> data = response.data;
-
       // 后端已经聚合了 Name 和 Avatar，前端直接转换即可，速度极快
       return data.map((json) {
         final timeStr = json['lastMessageAt'] != null
@@ -102,6 +113,7 @@ class ApiService {
                 .toString()
                 .substring(11, 16)
             : '';
+        final isGroup = json['type'] == 1;
 
         return Conversation(
           id: json['id'].toString(),
@@ -112,6 +124,7 @@ class ApiService {
           avatar: getFullAvatarUrl(json['avatar']),
           lastMessage: json['lastMessage'] ?? '',
           time: timeStr,
+          isGroup: isGroup,
           messages: [],
         );
       }).toList();
@@ -216,8 +229,6 @@ class ApiService {
       throw '文件上传失败';
     }
   }
-
-  // --- 好友/搜索 ---
 
   Future<List<UserSearchResult>> searchUsers(String query) async {
     try {

@@ -9,6 +9,7 @@ class Conversation {
   String time;
   final bool isMuted;
   final List<ChatMessage> messages; // <-- 新增字段：存储该会话的所有消息
+  final bool isGroup;
 
   Conversation({
     required this.id,
@@ -19,5 +20,6 @@ class Conversation {
     required this.time,
     required this.messages, // <-- 在构造函数中要求传入消息列表
     this.isMuted = false,
+    this.isGroup = false, // 默认为 false
   });
 }

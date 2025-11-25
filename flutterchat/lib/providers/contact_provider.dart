@@ -1,3 +1,5 @@
+import 'package:flutterchat/models/conversation.dart';
+import 'package:flutterchat/models/user_search_result.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/models/contact_group.dart';
@@ -29,8 +31,32 @@ Future<int> friendRequestCount(FriendRequestCountRef ref) async {
 @riverpod
 Future<List<ContactGroup>> contactList(ContactListRef ref) async {
   final api = ref.watch(apiServiceProvider);
-  final friends = await api.getFriends();
+  final currentUser = ref.watch(currentUserProvider);
+  if (currentUser == null) return [];
 
+  // 1. 并行请求：好友列表 + 会话列表(用于提取群聊)
+  // 注意：更严谨的做法是后端提供 getMyGroups 接口，这里我们复用 getConversations 简化
+  final futureFriends = api.getFriends();
+  final futureConversations =
+      api.getConversations(currentUserId: currentUser.userId);
+
+  final results = await Future.wait([futureFriends, futureConversations]);
+
+  final friends = results[0] as List<UserSearchResult>;
+  final conversations = results[1] as List<Conversation>;
+
+  // 2. 提取群聊
+  final groupChats = conversations
+      .where((c) => c.isGroup)
+      .map((c) => Contact(
+            id: c.id,
+            name: c.name,
+            avatarUrl: c.avatar,
+            remark: c.name, // 群聊备注暂同名
+          ))
+      .toList();
+
+  // 3. 组装分组
   final myFriendsGroup = ContactGroup(
     name: "我的好友",
     contacts: friends
@@ -43,9 +69,15 @@ Future<List<ContactGroup>> contactList(ContactListRef ref) async {
         .toList(),
   );
 
+  final myGroupsGroup = ContactGroup(
+    name: "我的群聊", // <--- 新增分组
+    contacts: groupChats,
+  );
+
   return [
     ContactGroup(name: '新的朋友', contacts: []),
-    ContactGroup(name: '群聊', contacts: []),
+    // 4. 填充群聊数据
+    myGroupsGroup,
     if (myFriendsGroup.contacts.isNotEmpty) myFriendsGroup,
   ];
 }

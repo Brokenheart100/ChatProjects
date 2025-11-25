@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:flutterchat/models/friendship_status.dart'; // 1. 引入状态枚举
 import 'package:flutterchat/models/user_search_result.dart';
-import 'package:flutterchat/providers/search_provider.dart'; // 引入搜索 Provider
-import 'package:flutterchat/widgets/custom_circle_avatar.dart'; // 复用头像组件
-import 'package:flutterchat/widgets/custom_search_field.dart'; // 复用搜索框组件
+import 'package:flutterchat/providers/search_provider.dart';
+import 'package:flutterchat/providers/services_provider.dart'; // 2. 引入 API Provider
+import 'package:flutterchat/widgets/custom_circle_avatar.dart';
+import 'package:flutterchat/widgets/custom_search_field.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -35,17 +37,37 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
     setState(() {});
   }
 
-  // 窗口关闭拦截逻辑保持不变
   @override
   void onWindowClose() async {
-    // 对于独立搜索窗口，通常直接关闭即可，不需要确认框
-    // 如果你需要确认框，可以保留之前的逻辑
     await windowManager.close();
+  }
+
+  // 3. 新增：发送好友请求的逻辑
+  Future<void> _sendFriendRequest(String userId) async {
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.sendFriendRequest(userId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text("好友请求已发送"), backgroundColor: Colors.green),
+        );
+        // 刷新搜索结果以更新按钮状态 (变更为"已发送")
+        // 这里稍微偷懒一下，直接触发重新搜索
+        ref.refresh(searchResultsProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("发送失败: $e"), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 监听搜索结果
     final resultsAsync = ref.watch(searchResultsProvider);
 
     return Directionality(
@@ -56,10 +78,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
           backgroundColor: const Color(0xFF2E2D2A),
           body: Column(
             children: [
-              // 1. 自定义标题栏 (包含搜索框)
               _buildTitleBar(),
-
-              // 2. 内容区域 (结果列表)
               Expanded(
                 child: resultsAsync.when(
                   data: (results) => _buildResultsList(results),
@@ -81,24 +100,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
   Widget _buildTitleBar() {
     return DragToMoveArea(
       child: Container(
-        height: 60, // 稍微高一点以容纳搜索框
+        height: 60,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         color: const Color(0xFF2E2D2A),
         child: Row(
           children: [
-            // 搜索框
             Expanded(
               child: CustomSearchField(
                 controller: _searchController,
                 hintText: "搜索用户/群组",
                 onChanged: (value) {
-                  // 更新 Provider 状态，触发搜索
                   ref.read(searchQueryProvider.notifier).set(value);
                 },
               ),
             ),
             const SizedBox(width: 16),
-            // 窗口控制按钮
             IconButton(
               onPressed: () => windowManager.minimize(),
               icon: const Icon(Icons.remove, size: 16, color: Colors.white70),
@@ -115,7 +131,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
 
   Widget _buildResultsList(List<UserSearchResult> results) {
     if (results.isEmpty) {
-      // 如果搜索框没内容，显示空提示；如果有内容但没结果，显示无结果
       final query = _searchController.text;
       return Center(
         child: Text(
@@ -129,6 +144,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
       itemCount: results.length,
       itemBuilder: (context, index) {
         final user = results[index];
+
+        // 4. 核心修改：根据状态显示不同按钮
+        final bool isRequestable =
+            user.friendshipStatus == FriendshipStatus.notFriend;
+
         return ListTile(
           leading: CustomCircleAvatar(
             avatarUrl: user.avatarUrl,
@@ -144,15 +164,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
             overflow: TextOverflow.ellipsis,
           ),
           trailing: ElevatedButton(
-            onPressed: () {
-              // TODO: 实现添加好友或发起聊天
-              // 这里可以调用 API 发送好友请求
-            },
+            // 如果已经是好友或已发送，禁用按钮
+            onPressed:
+                isRequestable ? () => _sendFriendRequest(user.userId) : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4A4A4A),
-              foregroundColor: Colors.white,
+              backgroundColor:
+                  isRequestable ? const Color(0xFF4A4A4A) : Colors.transparent,
+              foregroundColor: isRequestable ? Colors.white : Colors.grey,
+              disabledBackgroundColor: Colors.transparent,
+              disabledForegroundColor: Colors.grey,
+              side: isRequestable
+                  ? null
+                  : const BorderSide(color: Colors.grey, width: 1),
             ),
-            child: const Text("添加"),
+            child: Text(
+                user.friendshipStatus.displayText), // 显示 "添加", "已发送", "已是好友"
           ),
         );
       },

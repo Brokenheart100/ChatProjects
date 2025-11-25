@@ -1,8 +1,9 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 引入 Riverpod
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart'; // 1. 引入 GoRouter
 import 'package:flutterchat/models/saved_account.dart';
-import 'package:flutterchat/providers/services_provider.dart'; // 引入 Provider
+import 'package:flutterchat/providers/services_provider.dart';
 import 'package:flutterchat/services/account_service.dart';
 import 'package:flutterchat/services/logger_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -17,7 +18,6 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  // 我们依然可以使用局部的 AccountService，因为它不涉及全局状态共享
   final _accountService = AccountService();
 
   bool _isLoading = false;
@@ -53,7 +53,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 核心修改：使用 Riverpod 的 apiServiceProvider
       final apiService = ref.read(apiServiceProvider);
 
       final authResponse = await apiService.login(
@@ -61,7 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         password: _passwordController.text,
       );
 
-      // 核心修改：登录成功后，更新全局 CurrentUser 状态
+      // 更新全局状态
       ref.read(currentUserProvider.notifier).setUser(authResponse);
 
       final accountToSave = SavedAccount(
@@ -76,8 +75,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _passwordController.clear();
       _usernameController.clear();
 
-      // 导航到主页 (不需要再传参了，因为已经存到 Provider 里了)
-      Navigator.pushReplacementNamed(context, '/home');
+      // 2. 核心修复：使用 GoRouter 跳转
+      // go('/chat') 会直接进入首页的聊天 Tab
+      context.go('/chat');
     } catch (e, stackTrace) {
       logger.e('登录失败！', error: e, stackTrace: stackTrace);
       if (mounted) {
@@ -106,8 +106,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.read(apiServiceProvider);
-
     return Scaffold(
       body: DragToMoveArea(
         child: Container(
@@ -122,8 +120,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               _buildTitleBar(),
               const SizedBox(height: 15),
-              // 这里需要把 apiService 传给子组件或者子组件自己获取，
-              // 但为了简单，我们假设 CustomCircleAvatar 内部已经处理好了 URL
               _buildMultiAccountDisplay(),
               const SizedBox(height: 15),
               _buildInputField(_usernameController, '输入Username',
@@ -145,8 +141,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  // ... 请把之前的 _buildMultiAccountDisplay, _buildInputField 等私有方法全部复制过来 ...
-
   Widget _buildMultiAccountDisplay() {
     return Column(
       children: [
@@ -164,7 +158,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
                 decoration: BoxDecoration(
-                  color: Colors.black.withAlpha(77),
+                  color: Colors.black.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text('多账号登录',
@@ -220,7 +214,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildAccountAvatarList() {
-    // 获取 apiService 用于生成完整头像 URL
     final apiService = ref.read(apiServiceProvider);
 
     return SizedBox(
@@ -259,7 +252,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: (account.avatarUrl != null &&
                           account.avatarUrl!.isNotEmpty)
                       ? CachedNetworkImage(
-                          // 使用 apiService 生成完整 URL
                           imageUrl:
                               apiService.getFullAvatarUrl(account.avatarUrl),
                           fit: BoxFit.cover,
@@ -283,7 +275,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildAddAccountButton() {
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/register');
+        // 3. 核心修复：使用 GoRouter 跳转注册页
+        context.push('/register');
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -450,7 +443,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
           onSelected: (value) {
             if (value == 'register') {
-              Navigator.pushNamed(context, '/register');
+              // 3. 核心修复：使用 GoRouter 跳转注册页
+              context.push('/register');
             }
           },
           itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[

@@ -1,0 +1,273 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutterchat/models/auth_response.dart';
+import 'package:flutterchat/models/contact.dart';
+import 'package:flutterchat/providers/conversation_provider.dart';
+import 'package:flutterchat/providers/services_provider.dart';
+import 'package:flutterchat/screens/create_group_screen.dart'; // 引入创建群聊页面
+import 'package:flutterchat/services/logger_service.dart';
+import 'package:flutterchat/widgets/add_friend_panel.dart';
+import 'package:flutterchat/widgets/contact_detail_panel.dart';
+import 'package:flutterchat/widgets/contacts_panel.dart';
+import 'package:flutterchat/widgets/friend_requests_panel.dart';
+import 'package:flutterchat/widgets/chat_panel.dart';
+import 'package:flutterchat/widgets/conversation_list.dart' as widget_ui;
+import 'package:flutterchat/widgets/left_nav_rail.dart';
+import 'package:flutterchat/widgets/title_bar.dart';
+
+// UI 状态枚举
+enum MainPanelState {
+  chat,
+  contacts,
+  addFriend,
+  friendRequests,
+  createGroup, // 新增状态
+}
+
+// 简单的 UI 状态 Provider
+final mainPanelStateProvider =
+    StateProvider<MainPanelState>((ref) => MainPanelState.chat);
+final selectedNavIndexProvider = StateProvider<int>((ref) => 0);
+final selectedContactProvider = StateProvider<Contact?>((ref) => null);
+
+class HomeScreen extends ConsumerStatefulWidget {
+  final AuthResponse? authResponse;
+  const HomeScreen({super.key, this.authResponse});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    logger.i("🏠 [HomeScreen] initState");
+    if (widget.authResponse != null) {
+      logger.i("🔑 [HomeScreen] 使用传入的 AuthResponse 初始化 CurrentUser");
+      Future.microtask(() {
+        ref.read(currentUserProvider.notifier).setUser(widget.authResponse!);
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    logger.i("🚪 [HomeScreen] 用户点击登出按钮");
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认登出'),
+        content: const Text('确定要退出登录吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('确定', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      logger.w("👋 [HomeScreen] 执行登出逻辑...");
+      await ref.read(apiServiceProvider).logout();
+      ref.read(currentUserProvider.notifier).clear();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUser = ref.watch(currentUserProvider);
+    final navIndex = ref.watch(selectedNavIndexProvider);
+
+    // 监听状态变化打日志
+    ref.listen(mainPanelStateProvider, (previous, next) {
+      logger.d("🔄 [HomeScreen] 主面板状态切换: $previous -> $next");
+    });
+
+    if (currentUser == null) {
+      logger.w("⏳ [HomeScreen] CurrentUser 为空，显示加载圈");
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final fullAvatarUrl =
+        ref.read(apiServiceProvider).getFullAvatarUrl(currentUser.avatarUrl);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF363636),
+      body: Column(
+        children: [
+          CustomTitleBar(avatarUrl: fullAvatarUrl),
+          Expanded(
+            child: Row(
+              children: [
+                LeftNavRail(
+                  selectedIndex: navIndex,
+                  onDestinationSelected: (index) {
+                    logger.i("👈 [LeftNav] 点击导航栏索引: $index");
+                    ref.read(selectedNavIndexProvider.notifier).state = index;
+
+                    if (index == 0) {
+                      logger.d("🔄 [LeftNav] 切换到聊天模式");
+                      ref.read(mainPanelStateProvider.notifier).state =
+                          MainPanelState.chat;
+                    } else if (index == 1) {
+                      logger.d("🔄 [LeftNav] 切换到联系人模式，并清除选中联系人");
+                      ref.read(mainPanelStateProvider.notifier).state =
+                          MainPanelState.contacts;
+                      ref.read(selectedContactProvider.notifier).state = null;
+                    }
+                  },
+                  avatarUrl: fullAvatarUrl,
+                  onLogout: _logout,
+                ),
+                _buildBody(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    return Expanded(
+      child: Row(
+        children: [
+          _buildLeftPanel(),
+          _buildRightPanel(),
+        ],
+      ),
+    );
+  }
+
+  // 左侧面板构建逻辑 (列表)
+  Widget _buildLeftPanel() {
+    final navIndex = ref.watch(selectedNavIndexProvider);
+    logger.i("🖥️ [LeftPanel] 构建左面板，当前导航索引: $navIndex");
+
+    // 索引 0: 聊天列表 (包含 CreateGroup 状态)
+    if (navIndex == 0) {
+      final conversationListAsync = ref.watch(conversationListProvider);
+      final selectedIndex = ref.watch(selectedConversationIndexProvider);
+
+      return conversationListAsync.when(
+        data: (conversations) => widget_ui.ConversationList(
+          conversations: conversations,
+          selectedIndex: selectedIndex,
+          onTap: (index) {
+            ref.read(selectedConversationIndexProvider.notifier).set(index);
+            // 点击会话时，右侧切回聊天详情
+            ref.read(mainPanelStateProvider.notifier).state =
+                MainPanelState.chat;
+          },
+          onAddFriend: () {
+            ref.read(selectedNavIndexProvider.notifier).state = 1;
+            ref.read(mainPanelStateProvider.notifier).state =
+                MainPanelState.addFriend;
+          },
+          onCreateGroup: () {
+            // 保持左侧不变，右侧切换为创建群聊
+            ref.read(mainPanelStateProvider.notifier).state =
+                MainPanelState.createGroup;
+          },
+        ),
+        loading: () => Container(
+            width: 280,
+            color: const Color(0xFF3D3D3D),
+            child: const Center(child: CircularProgressIndicator())),
+        error: (err, stack) => Container(
+            width: 280,
+            color: const Color(0xFF3D3D3D),
+            child: Center(child: Text('Error: $err'))),
+      );
+    }
+
+    // 索引 1: 联系人列表 (包含 AddFriend, FriendRequests 状态)
+    else if (navIndex == 1) {
+      return ContactsPanel(
+        onAddFriend: () {
+          ref.read(mainPanelStateProvider.notifier).state =
+              MainPanelState.addFriend;
+        },
+        onNavigateToFriendRequests: () {
+          ref.read(mainPanelStateProvider.notifier).state =
+              MainPanelState.friendRequests;
+          ref.read(selectedContactProvider.notifier).state = null;
+        },
+        onCreateGroup: () {
+          // 保持左侧为联系人列表，右侧切换为创建群聊
+          ref.read(mainPanelStateProvider.notifier).state =
+              MainPanelState.createGroup;
+        },
+      );
+    }
+
+    return const SizedBox(width: 280);
+  }
+
+  // 右侧面板构建逻辑 (详情/内容)
+  Widget _buildRightPanel() {
+    final mainState = ref.watch(mainPanelStateProvider);
+    // logger.i("🖥️ [RightPanel] 构建右面板: $mainState");
+
+    switch (mainState) {
+      case MainPanelState.createGroup:
+        return const Expanded(child: CreateGroupScreen());
+
+      case MainPanelState.chat:
+        final conversationListAsync = ref.watch(conversationListProvider);
+        final selectedIndex = ref.watch(selectedConversationIndexProvider);
+
+        return conversationListAsync.when(
+          data: (conversations) {
+            if (conversations.isEmpty ||
+                selectedIndex >= conversations.length) {
+              return _buildPlaceholder("暂无会话");
+            }
+            final conversation = conversations[selectedIndex];
+            return Expanded(
+              child: ChatPanel(
+                key: ValueKey(conversation.id),
+                conversation: conversation,
+              ),
+            );
+          },
+          loading: () =>
+              const Expanded(child: Center(child: CircularProgressIndicator())),
+          error: (_, __) => const Expanded(child: SizedBox()),
+        );
+
+      case MainPanelState.addFriend:
+        return const Expanded(child: AddFriendPanel());
+
+      case MainPanelState.friendRequests:
+        return const Expanded(child: FriendRequestsPanel());
+
+      case MainPanelState.contacts:
+        final selectedContact = ref.watch(selectedContactProvider);
+        if (selectedContact == null) {
+          return _buildPlaceholder("请选择联系人");
+        }
+        return ContactDetailPanel(
+          contact: selectedContact,
+        );
+    }
+  }
+
+  Widget _buildPlaceholder(String message) {
+    return Expanded(
+      child: Container(
+        color: const Color(0xFF54514E),
+        child: Center(
+          child: Text(message, style: const TextStyle(color: Colors.white54)),
+        ),
+      ),
+    );
+  }
+}

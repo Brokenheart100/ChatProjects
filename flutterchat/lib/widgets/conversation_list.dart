@@ -12,6 +12,7 @@ class ConversationList extends ConsumerWidget {
   final int selectedIndex;
   final ValueChanged<int> onTap;
   final VoidCallback? onAddFriend;
+  final VoidCallback? onCreateGroup;
 
   const ConversationList({
     super.key,
@@ -19,6 +20,7 @@ class ConversationList extends ConsumerWidget {
     required this.selectedIndex,
     required this.onTap,
     this.onAddFriend,
+    this.onCreateGroup,
   });
 
   @override
@@ -200,6 +202,8 @@ class ConversationList extends ConsumerWidget {
       onSelected: (ConversationMenuAction value) {
         if (value == ConversationMenuAction.addFriend) {
           onAddFriend?.call();
+        } else if (value == ConversationMenuAction.createGroup) {
+          onCreateGroup?.call();
         }
       },
       itemBuilder: (BuildContext context) =>

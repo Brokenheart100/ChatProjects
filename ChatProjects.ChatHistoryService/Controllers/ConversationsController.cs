@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using ChatProjects.ChatHistoryService.Models;
 
 namespace ChatProjects.ChatHistoryService.Controllers;
 
@@ -49,6 +50,9 @@ public class ConversationsController(
             .Select(c => new
             {
                 c.Id,
+                c.Type, // ✅ 新增
+                c.Name, // ✅ 新增
+                c.Avatar, // ✅ 新增
                 c.LastMessageContent,
                 c.LastMessageAt,
                 RecipientId = _context.Participants
@@ -62,7 +66,7 @@ public class ConversationsController(
 
         // 2. 提取所有需要查询的 UserID
         var recipientIds = rawConversations
-            .Where(c => !string.IsNullOrEmpty(c.RecipientId))
+            .Where(c => c.Type == ConversationType.Private && !string.IsNullOrEmpty(c.RecipientId))
             .Select(c => c.RecipientId!)
             .Distinct()
             .ToList();
@@ -106,22 +110,33 @@ public class ConversationsController(
 
         var result = rawConversations.Select(c =>
         {
-            var user = userProfiles.FirstOrDefault(u => u.Id == c.RecipientId);
-            var displayName = user?.Username ?? c.RecipientId ?? "群聊";
+            string finalName = "未知";
+            string finalAvatar = "";
 
-            // 可选：打印详细的匹配日志（调试用，生产环境可去掉）
-            // _logger.LogDebug("   🔗 匹配会话 {ConvId} -> 用户 {UserId} ({Name})", c.Id, c.RecipientId, displayName);
+            if (c.Type == ConversationType.Group)
+            {
+                // 👉 群聊：直接用数据库里的名字
+                finalName = c.Name ?? "未命名群聊";
+                finalAvatar = c.Avatar ?? "";
+            }
+            else
+            {
+                // 👉 私聊：去 UserProfiles 里找
+                var user = userProfiles.FirstOrDefault(u => u.Id == c.RecipientId);
+                finalName = user?.Username ?? c.RecipientId ?? "未知用户";
+                finalAvatar = user?.AvatarUrl ?? "";
+            }
 
             return new ConversationListDto
             {
                 Id = c.Id,
-                RecipientId = c.RecipientId ?? "",
-                Name = displayName,
-                Avatar = user?.AvatarUrl ?? "",
+                RecipientId = c.RecipientId ?? "", // 群聊时这个字段可以为空或忽略
+                Name = finalName,
+                Avatar = finalAvatar,
                 LastMessage = c.LastMessageContent ?? "",
                 LastMessageAt = c.LastMessageAt
             };
-        }).ToList(); // 立即执行以完成 Select
+        }).ToList();
 
         _logger.LogInformation("🏁 [GetList] 请求处理完成，返回 {Count} 条会话数据", result.Count);
 

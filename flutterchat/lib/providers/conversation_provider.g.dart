@@ -23,7 +23,7 @@ final selectedConversationIndexProvider =
 );
 
 typedef _$SelectedConversationIndex = AutoDisposeNotifier<int>;
-String _$conversationListHash() => r'5bbb20806f7143b63c61f9a2b254631d87f652ad';
+String _$conversationListHash() => r'87b4180bd2c7e3fcae5cc0e5d9b2765a4d0d7347';
 
 /// See also [ConversationList].
 @ProviderFor(ConversationList)

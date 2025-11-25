@@ -6,7 +6,6 @@ import 'package:flutterchat/services/logger_service.dart'; // ✅ 引入 Logger
 
 part 'chat_provider.g.dart';
 
-// 修改这里：接收两个参数
 @riverpod
 class Chat extends _$Chat {
   // 1. 修改 build 方法，增加 recipientId

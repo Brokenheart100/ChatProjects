@@ -15,7 +15,8 @@ public class Conversation
 
     public ConversationType Type { get; set; }
 
-    // 快照字段，用于列表页快速展示，避免查 Message 表
+    public string? Name { get; set; }
+    public string? Avatar { get; set; }
     public string? LastMessageContent { get; set; }
     public DateTime LastMessageAt { get; set; }
     public long? LastMessageId { get; set; } // 关联 Message 的雪花 ID
