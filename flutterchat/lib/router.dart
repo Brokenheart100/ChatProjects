@@ -10,6 +10,9 @@ import 'package:flutterchat/screens/views/contact_view.dart';
 
 part 'router.g.dart';
 
+//  设置当前仓库走代理配置
+// git config http.proxy http://127.0.0.1:7897
+// git config https.proxy http://127.0.0.1:7897
 // 全局 Navigator Key (用于弹窗等)
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
