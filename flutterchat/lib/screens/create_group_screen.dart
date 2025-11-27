@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/providers/contact_provider.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
 import 'package:flutterchat/providers/services_provider.dart';
-import 'package:flutterchat/screens/views/chat_view.dart';
+import 'package:flutterchat/screens/views/chat_view.dart'; // ✅ 引入 chatSubStateProvider
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 
 class CreateGroupScreen extends ConsumerStatefulWidget {
@@ -42,9 +44,8 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               // 取消按钮
               TextButton(
                 onPressed: () {
-                  // 2. 核心修改：取消时，切换回普通聊天视图
-                  ref.read(chatSubStateProvider.notifier).state =
-                      ChatSubState.normal;
+                  // ✅ 核心修复：切换回普通聊天视图
+                  ref.read(chatSubStateProvider.notifier).state = ChatSubState.normal;
                 },
                 child:
                     const Text("取消", style: TextStyle(color: Colors.white54)),
@@ -146,24 +147,50 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   }
 
   Future<void> _createGroup() async {
+    if (_isCreating) return;
     setState(() => _isCreating = true);
+
     try {
-      await ref.read(apiServiceProvider).createGroup(
-            _nameController.text,
-            _selectedUserIds.toList(),
-          );
+      final newGroupId = const Uuid().v4();
+      final groupName = _nameController.text;
 
-      ref.invalidate(conversationListProvider);
+      final newConv = Conversation(
+        id: 0, 
+        uuid: newGroupId, 
+        recipientId: '', 
+        name: groupName,
+        avatar: '', 
+        lastMessage: '群聊已创建',
+        lastMessageAt: DateTime.now(),
+        isGroup: true,
+      );
 
-      // 3. 核心修改：创建成功后，切换回普通聊天视图
+      // 3. 写入本地库
+      ref.read(objectBoxProvider).saveConversation(newConv);
+
+      // 4. 更新列表
+      ref.read(conversationListProvider.notifier).addManualItem(newConv);
+
+      // 5. ✅ 核心修复：切换 UI 状态
+      // 告诉 ChatView：别显示 CreateGroupScreen 了，显示 ChatPanel 吧
       ref.read(chatSubStateProvider.notifier).state = ChatSubState.normal;
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("群聊创建成功"), backgroundColor: Colors.green),
-        );
-      }
+      // 6. 后台调用 API
+      ref
+          .read(apiServiceProvider)
+          .createGroup(
+            newGroupId,
+            groupName,
+            _selectedUserIds.toList(),
+          )
+          .catchError((e) {
+        if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text("同步服务器失败: $e"), backgroundColor: Colors.orange),
+            );
+        }
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

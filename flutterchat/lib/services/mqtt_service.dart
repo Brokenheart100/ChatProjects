@@ -5,19 +5,22 @@ import 'package:flutterchat/models/chat_message.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:flutterchat/services/logger_service.dart';
+import 'package:uuid/uuid.dart';
 
 // 1. 修改 Event 类
 class ChatMessageEvent {
   final String senderId;
   final String text;
   final DateTime timestamp;
-  final String conversationId; // <--- 新增字段
+  final String conversationId;
+  final String messageId; // 新增：记录后端的 MessageId
 
   ChatMessageEvent({
     required this.senderId,
     required this.text,
     required this.timestamp,
-    required this.conversationId, // <---
+    required this.conversationId,
+    required this.messageId,
   });
 
   factory ChatMessageEvent.fromJson(Map<String, dynamic> json) {
@@ -27,17 +30,27 @@ class ChatMessageEvent {
       timestamp: json['sentAt'] != null
           ? DateTime.parse(json['sentAt'])
           : DateTime.now(),
-      conversationId:
-          json['conversationId']?.toString() ?? '', // <--- 解析后端传回的 ID
+      conversationId: json['conversationId']?.toString() ?? '',
+      // 尝试获取后端 ID，如果没有则生成一个临时 UUID (健壮性处理)
+      messageId: json['messageId']?.toString() ??
+          json['id']?.toString() ??
+          const Uuid().v4(),
     );
   }
+
+  // ✅ 核心修复：适配 ObjectBox 的 ChatMessage 构造函数
   ChatMessage toMessage(String currentUserId) {
     return ChatMessage(
-      isMe: senderId == currentUserId,
-      sender: senderId,
+      id: 0, // ObjectBox 本地 ID，插入时自动生成
+      uuid: messageId, // 业务 ID
+      conversationId: conversationId,
+      senderId: senderId, // 使用 senderId 替代 sender
       text: text,
-      avatar: '', // 暂时留空，由 UI 处理
-      contentType: 0, // 默认为文本，如果后端传了 type 也要解析
+      isMe: senderId == currentUserId,
+      avatar: '', // 暂时留空，由 UI/Provider 层处理头像
+      contentType: 0, // 默认为文本
+      sentAt: timestamp,
+      status: 1, // 接收到的消息默认为成功
     );
   }
 }

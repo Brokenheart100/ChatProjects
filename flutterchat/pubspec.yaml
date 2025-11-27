@@ -1,62 +1,69 @@
 name: flutterchat
 description: "A new Flutter project."
 publish_to: "none"
-
 version: 1.0.0+1
 
 environment:
-  # This should match your Dart SDK version, >=3.0.0 is safe
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
+  # --- 核心工具 ---
+  path_provider: ^2.1.5
   equatable: ^2.0.5
-  flutter_bloc: ^9.1.1
+  uuid: ^4.5.1
+  logger: ^2.6.2
+  shared_preferences: ^2.5.3
+
+  # --- UI ---
   cupertino_icons: ^1.0.8
+  flutter_animate: ^4.5.2
+  cached_network_image: ^3.4.1
+
+  # --- 桌面端 ---
   window_manager: ^0.5.1
   desktop_multi_window: ^0.3.0
+
+  # --- 网络 ---
   dio: ^5.9.0
-  shared_preferences: ^2.5.3
-  logger: ^2.6.2
-  image_picker: ^1.2.0
-  cached_network_image: ^3.4.1
-  flutter_cache_manager: ^3.4.1
   mqtt_client: ^10.11.1
-  uuid: ^4.5.2
+  flutter_cache_manager: ^3.4.1
+
+  # --- 状态管理 (Riverpod V2 稳定版) ---
   flutter_riverpod: ^2.5.1
   riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
-  go_router: ^17.0.0
+
+  # --- 路由 ---
+  go_router: ^17.0.0 # 推荐使用 13.x 或 14.x 稳定版
+
+  # --- 数据库 (ObjectBox) ---
+  objectbox: ^2.4.0 # 推荐配合 flutter_libs 使用较稳的版本，或者使用 ^4.0.3
+  objectbox_flutter_libs: ^2.4.0
+  image_picker: ^1.2.1
+  # 注意：ObjectBox 4.0 有重大变更，如果用 4.0，请确保 generator 也是 4.0
+  # 这里为了稳妥，我们先试用最新版 4.0.3，如果报错再降级
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^6.0.0 # Using a recent version is good practice
+  flutter_lints: ^6.0.0
+
+  # --- 代码生成 ---
   build_runner: ^2.4.9
+
+  # Riverpod 生成器 (V2)
   riverpod_generator: ^2.4.0
   riverpod_lint: ^2.3.10
   custom_lint: ^0.6.4
 
+  # ObjectBox 生成器
+  objectbox_generator: ^2.4.0 # 版本需与 objectbox 一致，改为 ^4.0.3
+
 flutter:
   uses-material-design: true
-
-  # --- THIS IS THE CORRECTED SECTION ---
-  # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/image/ # This includes all files in the 'assets' directory.
-  # ------------------------------------
-
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
+    - assets/image/

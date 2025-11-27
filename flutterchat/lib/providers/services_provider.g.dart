@@ -49,6 +49,20 @@ final accountServiceProvider = Provider<AccountService>.internal(
 );
 
 typedef AccountServiceRef = ProviderRef<AccountService>;
+String _$objectBoxHash() => r'35c06f5bab673d1d4b1ab059279123238391bacd';
+
+/// See also [objectBox].
+@ProviderFor(objectBox)
+final objectBoxProvider = Provider<ObjectBoxService>.internal(
+  objectBox,
+  name: r'objectBoxProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$objectBoxHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef ObjectBoxRef = ProviderRef<ObjectBoxService>;
 String _$mqttServiceHash() => r'cfd61be6c66063d10770df38f4fef651fe6074e0';
 
 /// See also [mqttService].

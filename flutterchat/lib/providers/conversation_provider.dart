@@ -24,16 +24,12 @@ class ConversationList extends _$ConversationList {
 
     final currentUser = ref.read(currentUserProvider);
     if (currentUser == null) {
-      logger.w("🚫 [ConversationList] 当前用户未登录，返回空列表");
       return [];
     }
 
     // 监听 MQTT
     ref.listen(mqttMessageStreamProvider, (prev, next) {
       next.whenData((event) {
-        logger.d(
-            "📡 [ConversationList] 收到 MQTT: Sender=${event.senderId}, Text=${event.text}");
-
         _updateOrAdd(event.conversationId, event.text, event.senderId,
             currentUser.userId);
       });
@@ -42,12 +38,13 @@ class ConversationList extends _$ConversationList {
     // 加载初始列表
     try {
       final api = ref.read(apiServiceProvider);
-      logger.i("📥 [ConversationList] 正在拉取列表...");
+      // 假设 api.getConversations 已经适配好了 ObjectBox Model 的构造
+      // 如果没有，你需要去 api_service.dart 里也改一下
       final list =
           await api.getConversations(currentUserId: currentUser.userId);
       return list;
     } catch (e, stack) {
-      logger.e("❌ [ConversationList] 加载失败", error: e, stackTrace: stack);
+      logger.e("❌ 加载失败", error: e, stackTrace: stack);
       rethrow;
     }
   }
@@ -62,86 +59,88 @@ class ConversationList extends _$ConversationList {
     if (index != -1) {
       ref.read(selectedConversationIndexProvider.notifier).set(index);
     } else {
+      // ✅ 修复：适配 ObjectBox 构造函数
       final newConv = Conversation(
-        id: const Uuid().v4(),
+        id: 0, // 本地 ID
+        uuid: const Uuid().v4(), // 业务 UUID
         recipientId: contact.id,
         name: contact.name,
         avatar: contact.avatarUrl ?? '',
         lastMessage: '',
-        time: _formatTime(DateTime.now()),
-        messages: [],
+        lastMessageAt: DateTime.now(), // 使用 DateTime
+        isGroup: false,
       );
       state = AsyncData([newConv, ...currentList]);
       ref.read(selectedConversationIndexProvider.notifier).set(0);
     }
   }
 
-  // ✅ 补回丢失的方法：删除会话
-  void delete(String conversationId) {
+  void delete(String uuid) {
     final currentList = List<Conversation>.from(state.value ?? []);
-
-    // 1. 从列表中移除
-    currentList.removeWhere((c) => c.id == conversationId);
-
-    // 2. 更新状态
+    // ✅ 修复：比对 uuid (String)
+    currentList.removeWhere((c) => c.uuid == uuid);
     state = AsyncData(currentList);
-
-    // 3. 如果删除了当前选中的项，或者导致索引越界，重置索引为 0
-    // (简单处理，实际可以更复杂)
     ref.read(selectedConversationIndexProvider.notifier).set(0);
-
-    logger.i("🗑️ [delete] 已从列表中移除会话: $conversationId");
   }
 
-  // 收到消息更新列表 (带自动修正选中项逻辑)
+  // 收到消息更新列表
   void _updateOrAdd(
       String convId, String text, String senderId, String myUserId) {
     final currentList = List<Conversation>.from(state.value ?? []);
 
-    // 1. 记住当前选中的会话 ID
     final currentIndex = ref.read(selectedConversationIndexProvider);
-    String? selectedConversationId;
+    String? selectedConversationUuid;
     if (currentIndex >= 0 && currentIndex < currentList.length) {
-      selectedConversationId = currentList[currentIndex].id;
+      selectedConversationUuid = currentList[currentIndex].uuid; // 记录 UUID
     }
 
-    // 2. 列表重排
-    final index = currentList.indexWhere((c) => c.id == convId);
+    // ✅ 修复：比对 uuid (String)
+    final index = currentList.indexWhere((c) => c.uuid == convId);
 
     if (index != -1) {
       final old = currentList[index];
       currentList.removeAt(index);
-      currentList.insert(
-          0,
-          Conversation(
-            id: old.id,
-            recipientId: old.recipientId,
-            name: old.name,
-            avatar: old.avatar,
-            lastMessage: text,
-            time: _formatTime(DateTime.now()),
-            messages: old.messages,
-            isGroup: old.isGroup,
-          ));
+
+      // ✅ 修复：构造新对象
+      final newConv = Conversation(
+        id: old.id, // 保持本地 ID 不变
+        uuid: old.uuid,
+        recipientId: old.recipientId,
+        name: old.name,
+        avatar: old.avatar,
+        lastMessage: text,
+        lastMessageAt: DateTime.now(),
+        isGroup: old.isGroup,
+      );
+
+      currentList.insert(0, newConv);
       state = AsyncData(currentList);
     } else {
-      // 新会话，刷新列表
       ref.invalidateSelf();
       return;
     }
 
-    // 3. 修正选中索引
-    if (selectedConversationId != null) {
+    // 修正选中索引
+    if (selectedConversationUuid != null) {
       final newIndex =
-          currentList.indexWhere((c) => c.id == selectedConversationId);
+          currentList.indexWhere((c) => c.uuid == selectedConversationUuid);
       if (newIndex != -1 && newIndex != currentIndex) {
         ref.read(selectedConversationIndexProvider.notifier).set(newIndex);
-        logger.d("🧷 [AutoSelect] 选中索引修正: $currentIndex -> $newIndex");
       }
     }
   }
 
-  String _formatTime(DateTime time) {
-    return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
+  // 手动添加一个会话到列表顶部 (用于新建群聊的瞬间反馈)
+  void addManualItem(Conversation newConv) {
+    final currentList = List<Conversation>.from(state.value ?? []);
+
+    // 避免重复添加
+    if (currentList.any((c) => c.uuid == newConv.uuid)) return;
+
+    currentList.insert(0, newConv);
+    state = AsyncData(currentList);
+
+    // 选中第一个 (即刚添加的这个)
+    ref.read(selectedConversationIndexProvider.notifier).set(0);
   }
 }

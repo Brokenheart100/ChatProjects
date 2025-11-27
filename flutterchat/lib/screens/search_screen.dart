@@ -55,7 +55,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
         );
         // 刷新搜索结果以更新按钮状态 (变更为"已发送")
         // 这里稍微偷懒一下，直接触发重新搜索
-        ref.refresh(searchResultsProvider);
+        // ref.refresh(searchResultsProvider);
+        // 使用 invalidate 让 Provider 失效，UI 会自动重新触发加载
+        ref.invalidate(searchResultsProvider);
       }
     } catch (e) {
       if (mounted) {

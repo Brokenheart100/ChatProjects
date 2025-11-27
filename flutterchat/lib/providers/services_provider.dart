@@ -4,6 +4,7 @@ import 'package:flutterchat/services/api_service.dart';
 import 'package:flutterchat/services/account_service.dart';
 import 'package:flutterchat/services/mqtt_service.dart';
 import 'package:flutterchat/models/auth_response.dart';
+import 'package:flutterchat/services/objectbox_service.dart';
 
 part 'services_provider.g.dart';
 
@@ -16,6 +17,13 @@ ApiService apiService(ApiServiceRef ref) => ApiService();
 
 @Riverpod(keepAlive: true)
 AccountService accountService(AccountServiceRef ref) => AccountService();
+
+// ✅ 新增：ObjectBox 服务 Provider
+// 初始抛出异常，因为我们会在 main.dart 中初始化并覆盖它
+@Riverpod(keepAlive: true)
+ObjectBoxService objectBox(ObjectBoxRef ref) {
+  throw UnimplementedError('ObjectBox must be initialized in main.dart');
+}
 
 // 2. 当前登录用户 (全局状态)
 @Riverpod(keepAlive: true)
@@ -43,7 +51,6 @@ MqttService mqttService(MqttServiceRef ref) {
 }
 
 // 4. MQTT 消息流 (方便监听)
-// ✅ 核心修复：函数名改为 mqttMessageStream，对应 mqttMessageStreamProvider
 @riverpod
 Stream<ChatMessageEvent> mqttMessageStream(MqttMessageStreamRef ref) {
   final service = ref.watch(mqttServiceProvider);

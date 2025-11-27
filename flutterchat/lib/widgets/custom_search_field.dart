@@ -72,7 +72,7 @@ class CustomSearchField extends StatelessWidget {
             borderSide: BorderSide.none, // 无边框线
           ),
 
-          contentPadding: EdgeInsets.symmetric(
+          contentPadding: const EdgeInsets.symmetric(
             horizontal: 16.0,
             vertical: 12.0,
           ), // 内边距调整高度
@@ -82,7 +82,8 @@ class CustomSearchField extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25.0),
-            borderSide: BorderSide(color: Colors.blue, width: 1.0), // 聚焦时蓝边
+            borderSide:
+                const BorderSide(color: Colors.blue, width: 1.0), // 聚焦时蓝边
           ),
 
           // --- 核心布局，确保内容垂直居中 ---

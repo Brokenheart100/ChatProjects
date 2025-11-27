@@ -7,5 +7,6 @@ public class ConversationListDto
     public string Avatar { get; set; } = string.Empty; // 聚合后的头像
     public string LastMessage { get; set; } = string.Empty;
     public DateTime LastMessageAt { get; set; }
+    public int Type { get; set; }
 }
 

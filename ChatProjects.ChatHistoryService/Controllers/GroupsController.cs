@@ -32,7 +32,7 @@ public class GroupsController(ChatHistoryDbContext context, ILogger<GroupsContro
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                var groupId = Guid.NewGuid();
+                var groupId = dto.Id ?? Guid.NewGuid();
                 _logger.LogInformation("👥 [CreateGroup] 用户 {UserId} 正在创建群聊: {Name}, 成员数: {Count}", currentUserId, dto.GroupName, dto.MemberIds.Count);
 
                 // 1. 创建会话

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/providers/services_provider.dart';
 import 'package:flutterchat/router.dart'; // ✅ 核心：必须引入 router.dart
 import 'package:flutterchat/services/logger_service.dart';
+import 'package:flutterchat/services/objectbox_service.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
@@ -22,8 +23,18 @@ void main() async {
     await windowManager.focus();
   });
 
-  // --- Riverpod 初始化逻辑 ---
-  final container = ProviderContainer();
+  // 1. ✅ 初始化 ObjectBox (必须 await)
+  final objectBox = await ObjectBoxService.init();
+
+  // 2. ✅ 创建容器并【立即覆盖】Provider
+  // 如果你之前的代码是先创建 container 再去 override，那是不对的 (Riverpod 2.0 推荐做法)
+  // 或者如果你用了 container.updateOverrides(...) 也可以
+  final container = ProviderContainer(
+    overrides: [
+      // 这一行是关键！把初始化的实例注入进去
+      objectBoxProvider.overrideWithValue(objectBox),
+    ],
+  );
 
   try {
     final accountService = container.read(accountServiceProvider);

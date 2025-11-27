@@ -134,7 +134,8 @@ public class ConversationsController(
                 Name = finalName,
                 Avatar = finalAvatar,
                 LastMessage = c.LastMessageContent ?? "",
-                LastMessageAt = c.LastMessageAt
+                LastMessageAt = c.LastMessageAt,
+                Type = (int)c.Type
             };
         }).ToList();
 

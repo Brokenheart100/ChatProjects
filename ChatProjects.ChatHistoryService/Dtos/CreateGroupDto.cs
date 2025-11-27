@@ -4,6 +4,7 @@ namespace ChatProjects.ChatHistoryService.Dtos;
 
 public class CreateGroupDto
 {
+    public Guid? Id { get; set; }
     [Required]
     public string GroupName { get; set; } = string.Empty;
 

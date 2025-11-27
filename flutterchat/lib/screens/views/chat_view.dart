@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
 import 'package:flutterchat/widgets/chat_panel.dart';
@@ -50,9 +51,27 @@ class ChatView extends ConsumerWidget {
         },
       ),
       loading: () => Container(
-          width: 280,
-          color: const Color(0xFF3D3D3D),
-          child: const Center(child: CircularProgressIndicator())),
+        width: 280,
+        color: const Color(0xFF3D3D3D),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // 让图标旋转并呼吸
+              const Icon(Icons.sync, color: Colors.white54, size: 30)
+                  .animate(onPlay: (controller) => controller.repeat()) // 无限循环
+                  .rotate(duration: 1.seconds)
+                  .shimmer(duration: 1.seconds, color: Colors.white), // 闪光扫过
+
+              const SizedBox(height: 10),
+
+              const Text("正在同步消息...", style: TextStyle(color: Colors.white54))
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .fade(begin: 0.5, end: 1.0), // 文字呼吸灯效果
+            ],
+          ),
+        ),
+      ),
       error: (e, s) => Container(
           width: 280,
           color: const Color(0xFF3D3D3D),

@@ -49,7 +49,6 @@ class ConversationList extends ConsumerWidget {
                 final conversation = conversations[index];
                 final isSelected = selectedIndex == index;
 
-                // 1. 监听右键
                 return GestureDetector(
                   onTap: () => onTap(index),
                   onSecondaryTapDown: (details) {
@@ -69,7 +68,6 @@ class ConversationList extends ConsumerWidget {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     child: Row(
                       children: [
-                        // 2. 使用 CustomCircleAvatar (这里不需要 defaultAvatar 了)
                         CustomCircleAvatar(
                           avatarUrl: conversation.avatar,
                           radius: 22,
@@ -85,16 +83,21 @@ class ConversationList extends ConsumerWidget {
                                     child: Text(
                                       conversation.name,
                                       style: const TextStyle(
-                                          color: Colors.white, fontSize: 14),
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
+                                  // ✅ 修复 1：使用格式化方法处理 DateTime
                                   Text(
-                                    conversation.time,
+                                    _formatTime(conversation.lastMessageAt),
                                     style: const TextStyle(
-                                        color: Colors.white54, fontSize: 12),
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -109,9 +112,9 @@ class ConversationList extends ConsumerWidget {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  if (conversation.isMuted)
-                                    const Icon(Icons.notifications_off,
-                                        size: 14, color: Colors.white38),
+                                  // ✅ 修复 2：暂时移除 isMuted，或默认为 false
+                                  // if (conversation.isMuted)
+                                  //   const Icon(Icons.notifications_off, size: 14, color: Colors.white38),
                                 ],
                               ),
                             ],
@@ -129,7 +132,6 @@ class ConversationList extends ConsumerWidget {
     );
   }
 
-  // 显示右键菜单的方法
   void _showContextMenu(BuildContext context, WidgetRef ref, Offset position,
       Conversation conversation) {
     final RenderBox overlay =
@@ -143,8 +145,6 @@ class ConversationList extends ConsumerWidget {
         Offset.zero & overlay.size,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      // 3. 核心修复：显式指定泛型类型 <PopupMenuEntry<dynamic>>
-      // 这样包含 Divider 的列表就不会报错了
       items: <PopupMenuEntry<dynamic>>[
         _buildMenuItem(
           icon: Icons.vertical_align_top,
@@ -163,14 +163,16 @@ class ConversationList extends ConsumerWidget {
           icon: Icons.delete_outline,
           text: '从消息列表中移除',
           onTap: () {
-            ref.read(conversationListProvider.notifier).delete(conversation.id);
+            // ✅ 修复 3：传入 uuid (String)，而不是 id (int)
+            ref
+                .read(conversationListProvider.notifier)
+                .delete(conversation.uuid);
           },
         ),
       ],
     );
   }
 
-  // 辅助方法：构建菜单项
   PopupMenuItem<dynamic> _buildMenuItem({
     required IconData icon,
     required String text,
@@ -247,5 +249,10 @@ class ConversationList extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  // 辅助方法：格式化时间
+  String _formatTime(DateTime time) {
+    return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
   }
 }

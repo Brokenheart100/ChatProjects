@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/models/contact_group.dart';
 import 'package:flutterchat/providers/contact_provider.dart';
 import 'package:flutterchat/screens/home_screen.dart';
+import 'package:flutterchat/services/logger_service.dart';
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:flutterchat/widgets/custom_search_field.dart';
 
@@ -73,8 +75,33 @@ class _ContactsPanelState extends ConsumerState<ContactsPanel> {
           // 动态列表区域
           Expanded(
             child: contactListAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(
+              loading: () => Container(
+                width: 280,
+                color: const Color(0xFF3D3D3D),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 让图标旋转并呼吸
+                      const Icon(Icons.sync, color: Colors.white54, size: 30)
+                          .animate(
+                              onPlay: (controller) =>
+                                  controller.repeat()) // 无限循环
+                          .rotate(duration: 1.seconds)
+                          .shimmer(
+                              duration: 1.seconds, color: Colors.white), // 闪光扫过
+
+                      const SizedBox(height: 10),
+
+                      const Text("正在同步消息...",
+                              style: TextStyle(color: Colors.white54))
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .fade(begin: 0.5, end: 1.0), // 文字呼吸灯效果
+                    ],
+                  ),
+                ),
+              ),
+              error: (err, _) => const Center(
                   child: Text('加载失败', style: TextStyle(color: Colors.white54))),
               data: (allGroups) {
                 // 4. 核心逻辑：根据 Tab 筛选分组
@@ -189,8 +216,6 @@ class _ContactsPanelState extends ConsumerState<ContactsPanel> {
     );
   }
 
-  // ... 下面的方法 (Tile, Button 等) 保持不变，直接复制即可 ...
-
   Widget _buildPopupMenuButton(BuildContext context) {
     return PopupMenuButton<ContactMenuAction>(
       color: const Color(0xFF2E2E2E),
@@ -242,7 +267,7 @@ class _ContactsPanelState extends ConsumerState<ContactsPanel> {
 
   Widget _buildContactTile(
       WidgetRef ref, Contact contact, Contact? selectedContact) {
-    // logger.i("👤 [ContactsPanel] 渲染: ${contact.name}");
+    logger.i("👤 [ContactsPanel] 渲染: ${contact.name}");
     final isSelected = selectedContact?.id == contact.id;
 
     return GestureDetector(
@@ -283,7 +308,9 @@ class _ContactsPanelState extends ConsumerState<ContactsPanel> {
                   style: const TextStyle(color: Colors.white, fontSize: 12)),
             ),
           const SizedBox(width: 8),
-          const Icon(Icons.chevron_right, color: Colors.white54, size: 20),
+          const Icon(Icons.chevron_right, color: Colors.white54, size: 20)
+              .animate()
+              .fadeIn(duration: 300.ms) // 仅加入场动画
         ],
       ),
       dense: true,

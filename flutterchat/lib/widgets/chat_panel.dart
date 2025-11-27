@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 1. 引入 Riverpod
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutterchat/models/chat_message.dart';
 import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/providers/chat_provider.dart';
-import 'package:flutterchat/providers/services_provider.dart'; // 用于获取 apiService
+import 'package:flutterchat/providers/services_provider.dart';
 
-// 2. 改为继承 ConsumerStatefulWidget
-// 我们依然需要 Stateful 是因为 TextEditingController 和 ScrollController 需要 dispose
 class ChatPanel extends ConsumerStatefulWidget {
   final Conversation conversation;
 
-  // 注意：移除了 mqttService 和 currentUserId 参数
-  // 因为 Riverpod Provider 会自动从全局状态中获取这些信息，不需要层层传递
   const ChatPanel({
     super.key,
     required this.conversation,
@@ -33,29 +29,28 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
     super.dispose();
   }
 
-  // 发送文本逻辑
   void _onSendPressed() {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
     ref
         .read(chatProvider(
-                widget.conversation.id, widget.conversation.recipientId)
+                widget.conversation.uuid, // ✅ 修改点：使用 uuid (String)
+                widget.conversation.recipientId)
             .notifier)
         .sendText(text);
     _textController.clear();
   }
 
-  // 发送图片逻辑
   void _onImagePressed() async {
     try {
       final XFile? pickedFile =
           await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null && mounted) {
-        // ✅ 核心修改：传入两个参数
         ref
             .read(chatProvider(
-                    widget.conversation.id, widget.conversation.recipientId)
+                    widget.conversation.uuid, // ✅ 修改点：使用 uuid
+                    widget.conversation.recipientId)
                 .notifier)
             .sendImage(pickedFile);
       }
@@ -66,12 +61,13 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final chatAsyncValue = ref.watch(
-        chatProvider(widget.conversation.id, widget.conversation.recipientId));
+    // ✅ 修改点：使用 uuid
+    final chatAsyncValue = ref.watch(chatProvider(
+        widget.conversation.uuid, widget.conversation.recipientId));
 
-    // 监听错误
+    // ✅ 修改点：使用 uuid
     ref.listen(
-        chatProvider(widget.conversation.id, widget.conversation.recipientId),
+        chatProvider(widget.conversation.uuid, widget.conversation.recipientId),
         (previous, next) {
       if (next is AsyncError) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -93,12 +89,8 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       ),
       child: Column(
         children: [
-          // 头部
           _buildHeader(),
-
-          // 消息列表区域
           Expanded(
-            // 5. AsyncValue 优雅处理 加载/错误/数据 三种状态
             child: chatAsyncValue.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, stack) => Center(
@@ -107,7 +99,7 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
               data: (messages) {
                 return ListView.builder(
                   padding: const EdgeInsets.all(20),
-                  reverse: true, // 倒序排列，最新消息在底部
+                  reverse: true,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
@@ -119,15 +111,11 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
               },
             ),
           ),
-
-          // 输入框区域
           _buildInputArea(),
         ],
       ),
     );
   }
-
-  // --- UI 构建辅助方法 ---
 
   Widget _buildHeader() {
     return Container(
@@ -159,7 +147,6 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       color: const Color(0xFF3D3D3D),
       child: Column(
         children: [
-          // 工具栏
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -171,7 +158,6 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
               ],
             ),
           ),
-          // 输入框
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -187,7 +173,6 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
               ),
             ),
           ),
-          // 发送按钮
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Align(
@@ -197,9 +182,6 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6584FE),
                 ),
-                // 这里其实可以进一步优化：如果处于发送中状态，显示转圈
-                // 但需要从 Provider 状态中获取 isSending，AsyncValue 本身不包含这个业务状态
-                // 简单起见，我们先只显示文字
                 child: const Text('发送'),
               ),
             ),
@@ -286,9 +268,6 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
 
   Widget _buildMessageContent(ChatMessage message) {
     if (message.contentType == 1) {
-      // 使用 Riverpod 获取 ApiService 实例来生成 URL
-      // 注意：在 ConsumerState 中，我们不能直接 ref.read(apiServiceProvider).getFullAvatarUrl
-      // 最好是把 getFullAvatarUrl 变成静态方法，或者通过 ref 读出来
       final apiService = ref.read(apiServiceProvider);
       final fullUrl = apiService.getFullAvatarUrl(message.text);
 

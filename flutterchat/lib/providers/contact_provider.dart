@@ -49,7 +49,7 @@ Future<List<ContactGroup>> contactList(ContactListRef ref) async {
   final groupChats = conversations
       .where((c) => c.isGroup)
       .map((c) => Contact(
-            id: c.id,
+            id: c.uuid,
             name: c.name,
             avatarUrl: c.avatar,
             remark: c.name, // 群聊备注暂同名

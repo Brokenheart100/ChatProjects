@@ -6,7 +6,7 @@ part of 'chat_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatHash() => r'8a5b4e08183064e7dcbe408d7acf59f60e44febb';
+String _$chatHash() => r'5adc914ed6a371d0169729c43f8e8ae4a486ca16';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -30,11 +30,11 @@ class _SystemHash {
 }
 
 abstract class _$Chat
-    extends BuildlessAutoDisposeAsyncNotifier<List<ChatMessage>> {
+    extends BuildlessAutoDisposeStreamNotifier<List<ChatMessage>> {
   late final String conversationId;
   late final String recipientId;
 
-  FutureOr<List<ChatMessage>> build(
+  Stream<List<ChatMessage>> build(
     String conversationId,
     String recipientId,
   );
@@ -87,7 +87,7 @@ class ChatFamily extends Family<AsyncValue<List<ChatMessage>>> {
 
 /// See also [Chat].
 class ChatProvider
-    extends AutoDisposeAsyncNotifierProviderImpl<Chat, List<ChatMessage>> {
+    extends AutoDisposeStreamNotifierProviderImpl<Chat, List<ChatMessage>> {
   /// See also [Chat].
   ChatProvider(
     String conversationId,
@@ -121,7 +121,7 @@ class ChatProvider
   final String recipientId;
 
   @override
-  FutureOr<List<ChatMessage>> runNotifierBuild(
+  Stream<List<ChatMessage>> runNotifierBuild(
     covariant Chat notifier,
   ) {
     return notifier.build(
@@ -150,7 +150,7 @@ class ChatProvider
   }
 
   @override
-  AutoDisposeAsyncNotifierProviderElement<Chat, List<ChatMessage>>
+  AutoDisposeStreamNotifierProviderElement<Chat, List<ChatMessage>>
       createElement() {
     return _ChatProviderElement(this);
   }
@@ -172,7 +172,7 @@ class ChatProvider
   }
 }
 
-mixin ChatRef on AutoDisposeAsyncNotifierProviderRef<List<ChatMessage>> {
+mixin ChatRef on AutoDisposeStreamNotifierProviderRef<List<ChatMessage>> {
   /// The parameter `conversationId` of this provider.
   String get conversationId;
 
@@ -181,7 +181,7 @@ mixin ChatRef on AutoDisposeAsyncNotifierProviderRef<List<ChatMessage>> {
 }
 
 class _ChatProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<Chat, List<ChatMessage>>
+    extends AutoDisposeStreamNotifierProviderElement<Chat, List<ChatMessage>>
     with ChatRef {
   _ChatProviderElement(super.provider);
 

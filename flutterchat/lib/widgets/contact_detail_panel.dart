@@ -146,12 +146,11 @@ class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
             const Text('QQ (暂无)',
                 style: TextStyle(color: Colors.white70, fontSize: 14)),
             const SizedBox(height: 8),
-            Row(
+            const Row(
               children: [
-                const Icon(Icons.circle, color: Colors.grey, size: 16),
-                const SizedBox(width: 6),
-                const Text('离线',
-                    style: TextStyle(color: Colors.grey, fontSize: 14)),
+                Icon(Icons.circle, color: Colors.grey, size: 16),
+                SizedBox(width: 6),
+                Text('离线', style: TextStyle(color: Colors.grey, fontSize: 14)),
               ],
             ),
           ],
@@ -191,8 +190,8 @@ class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
   }
 
   Widget _buildLevel() {
-    return Row(
-      children: const [
+    return const Row(
+      children: [
         Icon(Icons.sunny, color: Colors.orange, size: 18),
         Icon(Icons.sunny, color: Colors.orange, size: 18),
         Icon(Icons.nightlight_round, color: Colors.grey, size: 14),
@@ -227,15 +226,15 @@ class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
   }
 
   Widget _buildPhotoGrid() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('精选照片',
+        Text('精选照片',
             style: TextStyle(
                 color: Colors.white70,
                 fontSize: 15,
                 fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
+        SizedBox(height: 12),
         Row(),
       ],
     );

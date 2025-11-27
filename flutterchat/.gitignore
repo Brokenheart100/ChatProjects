@@ -46,3 +46,7 @@ app.*.map.json
 /android/gradle-dist/
 **/gradle-dist/
 *.zip
+
+# ObjectBox Development Database
+/chat-db-dev/
+*.mdb
