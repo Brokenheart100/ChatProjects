@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutterchat/screens/create_group_screen.dart';
 import 'package:flutterchat/screens/home_screen.dart'; // 引用 selectedContactProvider
 import 'package:flutterchat/widgets/add_friend_panel.dart';
 import 'package:flutterchat/widgets/contact_detail_panel.dart';
@@ -20,13 +21,25 @@ class ContactView extends ConsumerWidget {
     return Row(
       children: [
         ContactsPanel(
-          onAddFriend: () => ref.read(contactSubStateProvider.notifier).state =
-              ContactSubState.addFriend,
-          onNavigateToFriendRequests: () => ref
-              .read(contactSubStateProvider.notifier)
-              .state = ContactSubState.requests,
+          onAddFriend: () {
+            // 1. 切换子状态
+            ref.read(contactSubStateProvider.notifier).state =
+                ContactSubState.addFriend;
+            // 2. 🚨 必须清空选中的联系人，否则右侧可能还是显示详情
+            ref.read(selectedContactProvider.notifier).state = null;
+          },
+          onNavigateToFriendRequests: () {
+            ref.read(contactSubStateProvider.notifier).state =
+                ContactSubState.requests;
+            // 🚨 清空选中
+            ref.read(selectedContactProvider.notifier).state = null;
+          },
           onCreateGroup: () {
-            // 这里通常是跳转到聊天Tab并打开创建页，为了演示简单，我们暂不实现跨Tab
+            // ✅ 补全逻辑：跳转到创建群聊面板
+            ref.read(contactSubStateProvider.notifier).state =
+                ContactSubState.createGroup;
+            // 🚨 清空选中
+            ref.read(selectedContactProvider.notifier).state = null;
           },
         ),
         Expanded(child: _buildDetail(ref)),
@@ -36,22 +49,26 @@ class ContactView extends ConsumerWidget {
 
   Widget _buildDetail(WidgetRef ref) {
     final subState = ref.watch(contactSubStateProvider);
+    final selectedContact = ref.watch(selectedContactProvider);
+
+    if (selectedContact != null) {
+      return ContactDetailPanel(contact: selectedContact);
+    }
 
     switch (subState) {
       case ContactSubState.addFriend:
         return const AddFriendPanel();
       case ContactSubState.requests:
         return const FriendRequestsPanel();
-      default:
-        final contact = ref.watch(selectedContactProvider);
-        if (contact == null) {
-          return Container(
-              color: const Color(0xFF333333),
-              child: const Center(
-                  child:
-                      Text("请选择联系人", style: TextStyle(color: Colors.white54))));
-        }
-        return ContactDetailPanel(contact: contact);
+      case ContactSubState.createGroup:
+        return const CreateGroupScreen(); // ✅ 显示创建群聊
+      case ContactSubState.normal:
+        return Container(
+          color: const Color(0xFF333333),
+          child: const Center(
+            child: Text("请选择联系人", style: TextStyle(color: Colors.white54)),
+          ),
+        );
     }
   }
 }

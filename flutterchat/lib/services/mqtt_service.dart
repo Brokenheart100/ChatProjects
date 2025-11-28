@@ -7,6 +7,19 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:flutterchat/services/logger_service.dart';
 import 'package:uuid/uuid.dart';
 
+class SystemEvent {
+  final String type;
+  final Map<String, dynamic> data;
+  SystemEvent({required this.type, required this.data});
+
+  factory SystemEvent.fromJson(Map<String, dynamic> json) {
+    return SystemEvent(
+      type: json['type'] ?? 'UNKNOWN',
+      data: json['data'] ?? {},
+    );
+  }
+}
+
 // 1. 修改 Event 类
 class ChatMessageEvent {
   final String senderId;
@@ -63,6 +76,10 @@ class MqttService {
   final _messageStreamController =
       StreamController<ChatMessageEvent>.broadcast();
 
+  final _systemStreamController = StreamController<SystemEvent>.broadcast();
+  Stream<SystemEvent> get onSystemEventReceived =>
+      _systemStreamController.stream;
+
   // --- 关键点：暴露流给外部 (ChatBloc) 监听 ---
   Stream<ChatMessageEvent> get onMessageReceived =>
       _messageStreamController.stream;
@@ -87,24 +104,36 @@ class MqttService {
 
   void _onConnected() {
     logger.i('MQTT 已连接');
-    // 订阅自己的消息主题，或者具体的会话主题
-    // 假设后端推送的主题是 "users/{userId}/messages" 或 "chats/{conversationId}"
-    // 这里我们订阅所有发给这个用户的消息
+
+    // 1. 订阅消息频道 (保持不变)
     _client.subscribe('users/$_userId/messages', MqttQos.atLeastOnce);
     _client.subscribe('chats/+/messages', MqttQos.atLeastOnce);
-    // 监听消息
+
+    // 2. ✅ 新增：订阅系统信令频道
+    _client.subscribe('users/$_userId/system', MqttQos.atLeastOnce);
+
     _client.updates!.listen((List<MqttReceivedMessage<MqttMessage?>>? c) {
       final MqttPublishMessage recMess = c![0].payload as MqttPublishMessage;
+      final topic = c[0].topic; // 获取 Topic
       final pt =
           MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
 
       try {
         final json = jsonDecode(pt);
-        // --- 关键点：解析并添加到流中 ---
-        final event = ChatMessageEvent.fromJson(json);
-        _messageStreamController.add(event);
+
+        // 3. ✅ 核心分流逻辑
+        if (topic.contains('/system')) {
+          // 是系统信令
+          final event = SystemEvent.fromJson(json);
+          logger.i("🔔 收到系统信令: ${event.type}");
+          _systemStreamController.add(event);
+        } else {
+          // 是普通聊天消息
+          final event = ChatMessageEvent.fromJson(json);
+          _messageStreamController.add(event);
+        }
       } catch (e) {
-        logger.e('解析 MQTT 消息失败: $pt');
+        logger.e('解析 MQTT 消息失败', error: e);
       }
     });
   }

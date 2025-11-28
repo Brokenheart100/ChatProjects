@@ -121,14 +121,12 @@ class ApiService {
       final List<dynamic> data = response.data;
 
       return data.map((json) {
-        // 解析时间字符串
-        final timeStr = json['lastMessageAt'] != null
-            ? DateTime.parse(json['lastMessageAt'])
-                .toLocal()
-                .toString()
-                .substring(11, 16) // 取 HH:mm
-            : '';
-
+        if (json['id'].toString().startsWith("b4b4859a")) {
+          logger.i("📡 [API Debug] 收到后端原始 JSON: $json");
+          logger.i(
+              "📡 [API Debug] json['type'] 的值: ${json['type']} (类型: ${json['type'].runtimeType})");
+          // 检查是不是 int vs string 的问题
+        }
         // 📝 适配 ObjectBox 本地数据库模型
         return Conversation(
           id: 0, // 本地 ID 自增，设为 0

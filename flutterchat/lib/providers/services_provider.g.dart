@@ -6,6 +6,22 @@ part of 'services_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+String _$mqttSystemStreamHash() => r'fbd7caae31f431d1233cec7a68019c59f79fba12';
+
+/// See also [mqttSystemStream].
+@ProviderFor(mqttSystemStream)
+final mqttSystemStreamProvider =
+    AutoDisposeStreamProvider<SystemEvent>.internal(
+  mqttSystemStream,
+  name: r'mqttSystemStreamProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$mqttSystemStreamHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef MqttSystemStreamRef = AutoDisposeStreamProviderRef<SystemEvent>;
 String _$apiClientHash() => r'cdc65f44d0ec7d7c3a88a5d035707e0245b00546';
 
 /// See also [apiClient].

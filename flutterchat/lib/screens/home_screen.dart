@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
       body: Column(
         children: [
           // 顶部标题栏 (全局共有)
-          CustomTitleBar(avatarUrl: fullAvatarUrl),
+          CustomTitleBar(),
 
           Expanded(
             child: Row(

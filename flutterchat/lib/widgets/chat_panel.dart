@@ -61,6 +61,8 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(currentUserProvider);
+    final currentUserId = currentUser?.userId ?? '';
     // ✅ 修改点：使用 uuid
     final chatAsyncValue = ref.watch(chatProvider(
         widget.conversation.uuid, widget.conversation.recipientId));
@@ -103,7 +105,9 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    return message.isMe
+                    final isMe = message.senderId.toLowerCase() ==
+                        currentUserId.toLowerCase();
+                    return isMe
                         ? _buildMyMessage(message)
                         : _buildOthersMessage(message);
                   },

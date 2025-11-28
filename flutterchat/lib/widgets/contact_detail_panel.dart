@@ -44,29 +44,27 @@ class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        color: const Color(0xFF54514E),
-        child: ListView(
-          padding: const EdgeInsets.all(30.0),
-          children: [
-            _buildHeader(),
-            const SizedBox(height: 20),
-            _buildPersonalInfo(),
-            const SizedBox(height: 20),
-            _buildLevel(),
-            const Divider(color: Colors.white10, height: 40),
-            _buildInfoRow(Icons.edit_outlined, '备注', widget.contact.remark),
-            _buildGroupDropdown(),
-            _buildInfoRow(Icons.edit_note_outlined, '签名',
-                widget.contact.signature ?? '(暂无签名)'),
-            _buildInfoRow(Icons.star_outline, 'QQ空间', '', isArrow: true),
-            const SizedBox(height: 20),
-            _buildPhotoGrid(),
-            const SizedBox(height: 50),
-            _buildActionButtons(),
-          ],
-        ),
+    return Container(
+      color: const Color(0xFF54514E),
+      child: ListView(
+        padding: const EdgeInsets.all(30.0),
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 20),
+          _buildPersonalInfo(),
+          const SizedBox(height: 20),
+          _buildLevel(),
+          const Divider(color: Colors.white10, height: 40),
+          _buildInfoRow(Icons.edit_outlined, '备注', widget.contact.remark),
+          _buildGroupDropdown(),
+          _buildInfoRow(Icons.edit_note_outlined, '签名',
+              widget.contact.signature ?? '(暂无签名)'),
+          _buildInfoRow(Icons.star_outline, 'QQ空间', '', isArrow: true),
+          const SizedBox(height: 20),
+          _buildPhotoGrid(),
+          const SizedBox(height: 50),
+          _buildActionButtons(),
+        ],
       ),
     );
   }

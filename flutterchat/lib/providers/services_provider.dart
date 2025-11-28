@@ -8,6 +8,13 @@ import 'package:flutterchat/services/objectbox_service.dart';
 
 part 'services_provider.g.dart';
 
+// 新增 Provider
+@riverpod
+Stream<SystemEvent> mqttSystemStream(MqttSystemStreamRef ref) {
+  final service = ref.watch(mqttServiceProvider);
+  return service.onSystemEventReceived;
+}
+
 // 1. 基础服务单例
 @Riverpod(keepAlive: true)
 ApiClient apiClient(ApiClientRef ref) => ApiClient();
