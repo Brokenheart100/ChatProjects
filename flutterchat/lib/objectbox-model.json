@@ -116,10 +116,46 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "3:975350030681244582",
+      "lastPropertyId": "5:8436743523843462232",
+      "name": "UserEntity",
+      "properties": [
+        {
+          "id": "1:297028105845437554",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3080299025170816281",
+          "name": "userId",
+          "type": 9,
+          "flags": 34848,
+          "indexId": "4:1932339092726144149"
+        },
+        {
+          "id": "3:3956675151888553508",
+          "name": "username",
+          "type": 9
+        },
+        {
+          "id": "4:7095264111837808138",
+          "name": "avatarUrl",
+          "type": 9
+        },
+        {
+          "id": "5:8436743523843462232",
+          "name": "updatedAt",
+          "type": 10
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "2:2555789845053409850",
-  "lastIndexId": "3:4078276390187838145",
+  "lastEntityId": "3:975350030681244582",
+  "lastIndexId": "4:1932339092726144149",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

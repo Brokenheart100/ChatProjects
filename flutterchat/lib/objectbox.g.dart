@@ -17,6 +17,7 @@ import 'package:objectbox_flutter_libs/objectbox_flutter_libs.dart';
 
 import 'models/chat_message.dart';
 import 'models/conversation.dart';
+import 'models/user_entity.dart';
 
 export 'package:objectbox/objectbox.dart'; // so that callers only have to import this file
 
@@ -131,6 +132,41 @@ final _entities = <obx_int.ModelEntity>[
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
+      backlinks: <obx_int.ModelBacklink>[]),
+  obx_int.ModelEntity(
+      id: const obx_int.IdUid(3, 975350030681244582),
+      name: 'UserEntity',
+      lastPropertyId: const obx_int.IdUid(5, 8436743523843462232),
+      flags: 0,
+      properties: <obx_int.ModelProperty>[
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(1, 297028105845437554),
+            name: 'id',
+            type: 6,
+            flags: 1),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(2, 3080299025170816281),
+            name: 'userId',
+            type: 9,
+            flags: 34848,
+            indexId: const obx_int.IdUid(4, 1932339092726144149)),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(3, 3956675151888553508),
+            name: 'username',
+            type: 9,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(4, 7095264111837808138),
+            name: 'avatarUrl',
+            type: 9,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(5, 8436743523843462232),
+            name: 'updatedAt',
+            type: 10,
+            flags: 0)
+      ],
+      relations: <obx_int.ModelRelation>[],
       backlinks: <obx_int.ModelBacklink>[])
 ];
 
@@ -169,8 +205,8 @@ Future<obx.Store> openStore(
 obx_int.ModelDefinition getObjectBoxModel() {
   final model = obx_int.ModelInfo(
       entities: _entities,
-      lastEntityId: const obx_int.IdUid(2, 2555789845053409850),
-      lastIndexId: const obx_int.IdUid(3, 4078276390187838145),
+      lastEntityId: const obx_int.IdUid(3, 975350030681244582),
+      lastIndexId: const obx_int.IdUid(4, 1932339092726144149),
       lastRelationId: const obx_int.IdUid(0, 0),
       lastSequenceId: const obx_int.IdUid(0, 0),
       retiredEntityUids: const [],
@@ -306,6 +342,49 @@ obx_int.ModelDefinition getObjectBoxModel() {
               status: statusParam);
 
           return object;
+        }),
+    UserEntity: obx_int.EntityDefinition<UserEntity>(
+        model: _entities[2],
+        toOneRelations: (UserEntity object) => [],
+        toManyRelations: (UserEntity object) => {},
+        getId: (UserEntity object) => object.id,
+        setId: (UserEntity object, int id) {
+          object.id = id;
+        },
+        objectToFB: (UserEntity object, fb.Builder fbb) {
+          final userIdOffset = fbb.writeString(object.userId);
+          final usernameOffset = fbb.writeString(object.username);
+          final avatarUrlOffset = fbb.writeString(object.avatarUrl);
+          fbb.startTable(6);
+          fbb.addInt64(0, object.id);
+          fbb.addOffset(1, userIdOffset);
+          fbb.addOffset(2, usernameOffset);
+          fbb.addOffset(3, avatarUrlOffset);
+          fbb.addInt64(4, object.updatedAt.millisecondsSinceEpoch);
+          fbb.finish(fbb.endTable());
+          return object.id;
+        },
+        objectFromFB: (obx.Store store, ByteData fbData) {
+          final buffer = fb.BufferContext(fbData);
+          final rootOffset = buffer.derefObject(0);
+          final idParam =
+              const fb.Int64Reader().vTableGet(buffer, rootOffset, 4, 0);
+          final userIdParam = const fb.StringReader(asciiOptimization: true)
+              .vTableGet(buffer, rootOffset, 6, '');
+          final usernameParam = const fb.StringReader(asciiOptimization: true)
+              .vTableGet(buffer, rootOffset, 8, '');
+          final avatarUrlParam = const fb.StringReader(asciiOptimization: true)
+              .vTableGet(buffer, rootOffset, 10, '');
+          final updatedAtParam = DateTime.fromMillisecondsSinceEpoch(
+              const fb.Int64Reader().vTableGet(buffer, rootOffset, 12, 0));
+          final object = UserEntity(
+              id: idParam,
+              userId: userIdParam,
+              username: usernameParam,
+              avatarUrl: avatarUrlParam,
+              updatedAt: updatedAtParam);
+
+          return object;
         })
   };
 
@@ -388,4 +467,27 @@ class ChatMessage_ {
   /// see [ChatMessage.status]
   static final status =
       obx.QueryIntegerProperty<ChatMessage>(_entities[1].properties[9]);
+}
+
+/// [UserEntity] entity fields to define ObjectBox queries.
+class UserEntity_ {
+  /// see [UserEntity.id]
+  static final id =
+      obx.QueryIntegerProperty<UserEntity>(_entities[2].properties[0]);
+
+  /// see [UserEntity.userId]
+  static final userId =
+      obx.QueryStringProperty<UserEntity>(_entities[2].properties[1]);
+
+  /// see [UserEntity.username]
+  static final username =
+      obx.QueryStringProperty<UserEntity>(_entities[2].properties[2]);
+
+  /// see [UserEntity.avatarUrl]
+  static final avatarUrl =
+      obx.QueryStringProperty<UserEntity>(_entities[2].properties[3]);
+
+  /// see [UserEntity.updatedAt]
+  static final updatedAt =
+      obx.QueryDateProperty<UserEntity>(_entities[2].properties[4]);
 }

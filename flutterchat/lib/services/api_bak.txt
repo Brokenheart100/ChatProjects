@@ -1,0 +1,453 @@
+import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutterchat/models/auth_response.dart';
+import 'package:flutterchat/models/chat_message.dart';
+import 'package:flutterchat/models/conversation.dart'; // 确保引入
+import 'package:flutterchat/models/friend_request.dart';
+import 'package:flutterchat/models/user_search_result.dart';
+import 'package:flutterchat/services/api_client.dart';
+import 'package:flutterchat/services/logger_service.dart';
+
+/// 📂 文件上传信息模型
+/// 后端返回的预签名 URL (用于直接上传到 MinIO) 和文件的 ObjectKey
+class UploadInfo {
+  final String uploadUrl;
+  final String objectKey;
+
+  UploadInfo({required this.uploadUrl, required this.objectKey});
+
+  factory UploadInfo.fromJson(Map<String, dynamic> json) {
+    return UploadInfo(
+      uploadUrl: json['uploadUrl'],
+      objectKey: json['objectKey'],
+    );
+  }
+}
+
+/// 🌐 API 服务层 (ApiService)
+/// 负责所有与后端 HTTP 接口的交互，是 Flutter 端的数据源头。
+/// 这里使用了单例模式的 ApiClient 来统一管理网络连接。
+class ApiService {
+  // 🔌 获取单例 ApiClient 中的 dio 实例
+  // 这个实例已经配置好了拦截器（自动加 Token）、BaseUrl 和超时时间
+  Dio get _dio => ApiClient().dio;
+
+  // 构造函数 (轻量级，无副作用)
+  ApiService();
+
+  // ==========================================
+  // 🔑 认证相关 (Authentication)
+  // ==========================================
+
+  /// 登录
+  /// 返回：AuthResponse (包含 Token 和 用户基本信息)
+  /// 逻辑：登录成功后自动调用 saveToken 保存凭证
+  Future<AuthResponse> login(
+      {required String username, required String password}) async {
+    try {
+      final response = await _dio.post(
+        '/gateway/auth/login',
+        data: {'username': username, 'password': password},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final authResponse = AuthResponse.fromJson(response.data);
+        // 📝 关键：登录成功，持久化 Token
+        await ApiClient().saveToken(authResponse.token);
+        return authResponse;
+      } else {
+        throw '登录失败，服务器未返回数据';
+      }
+    } on DioException catch (e) {
+      throw _handleError(e, 'login');
+    }
+  }
+
+  /// 注册新用户
+  Future<void> register({
+    required String username,
+    required String email,
+    required String password,
+    String? avatarUrl,
+  }) async {
+    try {
+      await _dio.post(
+        '/gateway/auth/register',
+        data: {
+          'username': username,
+          'email': email,
+          'password': password,
+          'avatarUrl': avatarUrl, // 📝 将 MinIO 的 ObjectKey 传给后端
+        },
+      );
+    } on DioException catch (e) {
+      throw _handleError(e, 'register');
+    }
+  }
+
+  /// 恢复会话 (自动登录)
+  /// 当用户下次打开 App 时，用本地 Token 换取最新的用户信息
+  Future<AuthResponse> getSession() async {
+    try {
+      // 拦截器会自动加上 Authorization 头
+      final response = await _dio.get('/gateway/auth/session');
+      final authResponse = AuthResponse.fromJson(response.data);
+      // 刷新 Token 有效期
+      await ApiClient().saveToken(authResponse.token);
+      return authResponse;
+    } on DioException catch (e) {
+      throw _handleError(e, 'getSession');
+    }
+  }
+
+  /// 注销
+  /// 只需要清除本地 Token，路由会自动跳回登录页
+  Future<void> logout() async {
+    await ApiClient().removeToken();
+  }
+
+  // ==========================================
+  // 💬 会话与消息 (Chat & Conversation)
+  // ==========================================
+
+  /// 获取会话列表
+  /// 💡 企业级优化：后端聚合模式 (BFF)
+  /// 这里调用的是后端聚合好的接口，直接返回了对方的名字和头像，
+  /// 避免了前端发起 N+1 次请求去查用户信息。
+  Future<List<Conversation>> getConversations(
+      {required String currentUserId}) async {
+    try {
+      final response = await _dio.get('/gateway/conversations');
+      final List<dynamic> data = response.data;
+
+      return data.map((json) {
+        if (json['recipientId'] == null || json['recipientId'] == '') {
+          logger.w(
+              "⚠️ 发现 RecipientId 为空的会话: ${json['id']}, Type: ${json['type']}");
+        }
+        // 📝 适配 ObjectBox 本地数据库模型
+        return Conversation(
+          id: 0, // 本地 ID 自增，设为 0
+          uuid: json['id'].toString(), // 业务主键 (UUID)
+          recipientId: json['recipientId'] ?? '',
+          name: json['name'] ?? '未知', // 后端聚合好的名字
+          avatar: getFullAvatarUrl(json['avatar']), // 转换头像 URL
+          lastMessage: json['lastMessage'] ?? '',
+          lastMessageAt: json['lastMessageAt'] != null
+              ? DateTime.parse(json['lastMessageAt'])
+              : DateTime.now(),
+          isGroup: json['type'] == 1, // 0=私聊, 1=群聊
+        );
+      }).toList();
+    } on DioException catch (e) {
+      throw _handleError(e, 'getConversations');
+    }
+  }
+
+  /// 获取某个会话的历史消息
+  Future<List<ChatMessage>> getMessageHistory(String conversationId,
+      {required String currentUserId}) async {
+    try {
+      final response = await _dio.get(
+        '/gateway/conversations/$conversationId/messages',
+        queryParameters: {'limit': 50}, // 分页：每次拉取50条
+      );
+
+      final List<dynamic> data = response.data;
+
+      // 调试日志：看看后端返回了啥
+      if (data.isNotEmpty) {
+        logger.d("🔍 历史消息示例: ${data[0]}");
+      }
+
+      return data.map((json) {
+        final senderId = json['senderId'].toString();
+        return ChatMessage(
+          id: 0,
+          uuid: json['id']?.toString() ?? '', // 后端 MessageID
+          conversationId: conversationId,
+          senderId: senderId,
+          text: json['content'],
+          contentType: json['contentType'] ?? 0,
+          // 📝 核心逻辑：判断这条消息是不是我发的 (忽略大小写)
+          isMe: senderId.toLowerCase() == currentUserId.toLowerCase(),
+          avatar: '', // 详情页头像由 UI 或 Provider 统一注入，这里留空
+          sentAt: json['sentAt'] != null
+              ? DateTime.parse(json['sentAt'])
+              : DateTime.now(),
+          status: 1, // 从后端拉取的，默认为发送成功
+        );
+      }).toList();
+    } on DioException catch (e) {
+      // 📝 容错处理：如果是 404 (新会话) 或 403 (无权)，视为没有历史消息
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 403) {
+        return [];
+      }
+      throw _handleError(e, 'getMessageHistory');
+    }
+  }
+
+  /// 发送消息
+  /// 调用后端的 SendMessage 接口
+  Future<String> sendMessage(String conversationId, String content,
+      {int contentType = 0, String? recipientId}) async {
+    try {
+      final response = await _dio.post(
+        '/gateway/messages',
+        data: {
+          'conversationId': conversationId,
+          'content': content,
+          'contentType': contentType,
+          'recipientId': recipientId, // 如果是私聊且是新会话，需要这个 ID 来建群
+        },
+      );
+      final realId = response.data['realConversationId']?.toString();
+      return realId ?? conversationId;
+    } on DioException catch (e) {
+      throw _handleError(e, 'sendMessage');
+    }
+  }
+
+  /// 👥 创建群聊
+  /// [id]: 前端生成的 UUID (离线优先的关键)
+  Future<void> createGroup(
+      String id, String groupName, List<String> memberIds) async {
+    try {
+      await _dio.post('/gateway/groups', data: {
+        'id': id, // 📝 传给后端，让后端使用这个 ID 建群
+        'groupName': groupName,
+        'memberIds': memberIds,
+      });
+      logger.i("✅ API调用成功: 群聊已创建 (ID: $id)");
+    } on DioException catch (e) {
+      throw _handleError(e, 'createGroup');
+    }
+  }
+
+  // ==========================================
+  // 📤 文件上传 (File Upload)
+  // ==========================================
+
+  /// 1. 获取上传凭证 (预签名 URL)
+  Future<UploadInfo> getUploadUrl(String fileName) async {
+    try {
+      final response = await _dio.get(
+        '/gateway/files/generate-upload-url',
+        queryParameters: {'fileName': fileName},
+      );
+      return UploadInfo.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleError(e, 'getUploadUrl');
+    }
+  }
+
+  /// 2. 完整的上传流程 (封装了获取 URL 和 上传两步)
+  /// 返回：文件的 ObjectKey (用于存数据库)
+  Future<String> uploadFileAndGetObjectKey(XFile file) async {
+    final uploadInfo = await getUploadUrl(file.name);
+    await _uploadToMinioRaw(uploadInfo.uploadUrl, file);
+    return uploadInfo.objectKey;
+  }
+
+  /// 3. 执行上传 (PUT 到 MinIO)
+  /// ⚠️ 注意：这里创建了一个纯净的 Dio 实例，不带 Token
+  /// 因为 MinIO 的预签名 URL 已经包含了认证信息，带 Token 会导致 403
+  Future<void> _uploadToMinioRaw(String uploadUrl, XFile file) async {
+    try {
+      final fileBytes = await file.readAsBytes();
+      final cleanDio = Dio();
+
+      await cleanDio.put(
+        uploadUrl,
+        data: Stream.fromIterable(fileBytes.map((e) => [e])), // 流式上传大文件
+        options: Options(
+          headers: {
+            Headers.contentLengthHeader: fileBytes.length,
+            Headers.contentTypeHeader: 'image/jpeg', // 简单处理，生产环境应用 mimeType
+          },
+        ),
+      );
+      logger.i('MinIO Upload Success');
+    } on DioException catch (e) {
+      logger.e('MinIO Upload Failed', error: e);
+      throw '文件上传失败';
+    }
+  }
+
+  // ==========================================
+  // 🤝 好友关系 (Friends)
+  // ==========================================
+
+  /// 搜索用户 (模糊查询)
+  Future<List<UserSearchResult>> searchUsers(String query) async {
+    try {
+      final response = await _dio.get(
+        '/gateway/search/users',
+        queryParameters: {'query': query},
+      );
+      return (response.data as List)
+          .map((json) => UserSearchResult.fromJson(json))
+          .toList();
+    } on DioException catch (e) {
+      throw _handleError(e, 'searchUsers');
+    }
+  }
+
+  /// 获取我的好友列表
+  Future<List<UserSearchResult>> getFriends() async {
+    try {
+      final response = await _dio.get('/gateway/friends');
+      return (response.data as List)
+          .map((json) => UserSearchResult.fromJson(json))
+          .toList();
+    } on DioException catch (e) {
+      throw _handleError(e, 'getFriends');
+    }
+  }
+
+  // 统计待处理的好友请求数
+  Future<int> getPendingFriendRequestsCount() async {
+    try {
+      final response =
+          await _dio.get('/gateway/friends/requests/pending/count');
+      return response.data['count'] as int;
+    } catch (e) {
+      return 0; // 出错默认 0，不阻断流程
+    }
+  }
+
+  // 获取好友请求列表
+  Future<List<FriendRequest>> getPendingFriendRequests() async {
+    try {
+      final response = await _dio.get('/gateway/friends/requests/pending');
+      return (response.data as List)
+          .map((json) => FriendRequest.fromJson(json))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // 发送、接受、拒绝好友请求
+  Future<void> sendFriendRequest(String recipientId) async {
+    await _dio
+        .post('/gateway/friends/requests', data: {'recipientId': recipientId});
+  }
+
+  Future<void> acceptFriendRequest(String requestId) async {
+    await _dio.post('/gateway/friends/requests/$requestId/accept');
+  }
+
+  Future<void> rejectFriendRequest(String requestId) async {
+    await _dio.post('/gateway/friends/requests/$requestId/reject');
+  }
+
+  // ==========================================
+  // 🛠️ 辅助工具方法 (Helpers)
+  // ==========================================
+
+  /// 手动保存 Token (供 LoginScreen 使用)
+  Future<void> saveToken(String token) async {
+    await ApiClient().saveToken(token);
+  }
+
+  /// 生成完整头像 URL
+  /// 将后端的 ObjectKey 转换为可访问的 HTTP 链接
+  String getFullAvatarUrl(String? objectKey) {
+    if (objectKey == null || objectKey.isEmpty) return '';
+    if (objectKey.startsWith('http')) return objectKey; // 已经是完整链接
+
+    // 📝 注意：这里硬编码了 localhost，真机调试需改为 IP (如 10.0.2.2)
+    // 建议将其提取到环境变量或配置文件中
+    const minioUrl = 'http://localhost:9000/avatars';
+    return '$minioUrl/$objectKey';
+  }
+
+  /// 统一错误处理
+  /// 将 Dio 的异常转换为人类可读的字符串
+  String _handleError(DioException e, String context) {
+    logger.e('Error in $context: ${e.message}', error: e);
+    if (e.response?.data is String) {
+      return e.response?.data; // 后端返回的错误消息
+    }
+    if (e.type == DioExceptionType.connectionTimeout) {
+      return '连接超时，请检查网络';
+    }
+    return '操作失败 (${e.response?.statusCode})';
+  }
+
+  // --- 用户资料接口 ---
+
+  /// 获取用户信息 (用于私聊详情)
+  Future<UserSearchResult> getUserProfile(String userId) async {
+    try {
+      // ❌ 以前的做法：调用搜索接口 (不靠谱，可能搜不到 ID)
+      // final users = await searchUsers(userId);
+
+      // ✅ 现在的做法：调用批量接口 (靠谱，精准匹配 ID)
+      // 虽然只查一个人，但也是一个 List
+      final users = await getUsersBatch([userId]);
+
+      if (users.isNotEmpty) {
+        return users.first;
+      }
+
+      // 如果真的没查到，抛出异常
+      throw "User not found: $userId";
+    } on DioException catch (e) {
+      throw _handleError(e, 'getUserProfile');
+    }
+  }
+
+  /// 踢出群成员
+  Future<void> kickGroupMember(
+      {required String groupId, required String userId}) async {
+    try {
+      // 假设后端踢人接口是 POST /gateway/groups/{groupId}/kick
+      await _dio
+          .post('/gateway/groups/$groupId/kick', data: {'userId': userId});
+    } on DioException catch (e) {
+      throw _handleError(e, 'kickGroupMember');
+    }
+  }
+
+  /// 获取群成员列表 (如果还没加)
+  Future<List<UserSearchResult>> getGroupMembers(String groupId) async {
+    try {
+      final response = await _dio.get('/gateway/groups/$groupId/members');
+      return (response.data as List)
+          .map((json) => UserSearchResult.fromJson(json))
+          .toList();
+    } on DioException catch (e) {
+      throw _handleError(e, 'getGroupMembers');
+    }
+  }
+
+  /// 退出群聊 (如果还没加)
+  Future<void> leaveGroup(String groupId) async {
+    try {
+      await _dio.post('/gateway/groups/$groupId/leave');
+    } on DioException catch (e) {
+      throw _handleError(e, 'leaveGroup');
+    }
+  }
+
+  Future<List<UserSearchResult>> getUsersBatch(List<String> userIds) async {
+    try {
+      final response = await _dio.post(
+        '/gateway/users/batch',
+        data: userIds, // 直接传 List<String>
+      );
+
+      final List<dynamic> data = response.data;
+
+      return data.map((json) {
+        // 注意：后端返回的字段可能需要适配，这里复用 UserSearchResult.fromJson
+        // 确保后端返回的 JSON 结构与 UserSearchResult 兼容
+        return UserSearchResult.fromJson(json);
+      }).toList();
+    } on DioException catch (e) {
+      throw _handleError(e, 'getUsersBatch');
+    }
+  }
+}
