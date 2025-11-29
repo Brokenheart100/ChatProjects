@@ -27,6 +27,14 @@ class ConversationList extends _$ConversationList {
       return [];
     }
 
+    ref.listen(mqttSystemStreamProvider, (prev, next) {
+      next.whenData((event) {
+        if (event.type == 'SYSTEM_GROUP_CREATED') {
+          _handleGroupCreated(event.data);
+        }
+      });
+    });
+
     // 监听 MQTT
     ref.listen(mqttMessageStreamProvider, (prev, next) {
       next.whenData((event) {
@@ -38,10 +46,16 @@ class ConversationList extends _$ConversationList {
     // 加载初始列表
     try {
       final api = ref.read(apiServiceProvider);
-      // 假设 api.getConversations 已经适配好了 ObjectBox Model 的构造
-      // 如果没有，你需要去 api_service.dart 里也改一下
+      final db = ref.read(objectBoxProvider); // 1. 获取 DB 实例
+
+      logger.i("📥 [ConversationList] 正在从 API 拉取会话列表...");
       final list =
           await api.getConversations(currentUserId: currentUser.userId);
+      // 2. ⚠️ 必须有这一步：把拉取到的最新数据写入本地
+      // 这样下次启动，或者 UI 监听流的时候，才能看到新名字
+      db.saveConversations(list);
+
+      logger.i("✅ [ConversationList] 列表加载成功并已同步到本地");
       return list;
     } catch (e, stack) {
       logger.e("❌ 加载失败", error: e, stackTrace: stack);
@@ -49,27 +63,75 @@ class ConversationList extends _$ConversationList {
     }
   }
 
+  void _handleGroupCreated(Map<String, dynamic> data) {
+    final groupId = data['groupId']?.toString() ?? '';
+    final groupName = data['name'] ?? '未命名群聊';
+
+    logger.i("✨ [System] 被拉入新群: $groupName ($groupId)");
+
+    // 1. 构造 Conversation 对象
+    final newGroup = Conversation(
+      id: 0, // 本地 ID
+      uuid: groupId, // 真实 UUID
+      recipientId: '', // 群聊无
+      name: groupName,
+      avatar: '', // 默认头像
+      lastMessage: '你已加入群聊',
+      lastMessageAt: DateTime.now(), // 确保置顶
+      isGroup: true, // ✅ 标记为群聊
+    );
+
+    // 2. 存入 ObjectBox
+    final db = ref.read(objectBoxProvider);
+    db.saveConversation(newGroup);
+
+    // 3. 更新 UI 列表 (插入头部)
+    final currentList = List<Conversation>.from(state.value ?? []);
+
+    // 防止重复添加
+    if (!currentList.any((c) => c.uuid == groupId)) {
+      currentList.insert(0, newGroup);
+      state = AsyncData(currentList);
+    }
+  }
+
   // 创建新会话
   void createOrSelect(Contact contact) {
-    logger.i("👉 [createOrSelect] 点击联系人: ${contact.name}");
+    logger.i("👉 [createOrSelect] 点击联系人: ${contact.name} (ID: ${contact.id})");
 
     final currentList = state.value ?? [];
-    final index = currentList.indexWhere((c) => c.recipientId == contact.id);
+
+    // ✅ 修复：优先匹配 uuid (针对群聊)，再匹配 recipientId (针对私聊)
+    int index = currentList.indexWhere((c) => c.uuid == contact.id);
+
+    if (index == -1) {
+      index = currentList.indexWhere((c) => c.recipientId == contact.id);
+    }
 
     if (index != -1) {
+      logger.i("📂 [createOrSelect] 找到已有会话 (Index: $index)，直接选中");
       ref.read(selectedConversationIndexProvider.notifier).set(index);
     } else {
-      // ✅ 修复：适配 ObjectBox 构造函数
+      // 新建 (私聊)
+
+      final isGroup = contact.id.length == 36; // 简单判断
+
+      final newUuid = isGroup ? contact.id : const Uuid().v4();
+      logger.i("🆕 [createOrSelect] 未找到会话，创建新会话");
       final newConv = Conversation(
-        id: 0, // 本地 ID
-        uuid: const Uuid().v4(), // 业务 UUID
-        recipientId: contact.id,
+        id: 0,
+        uuid: newUuid, // ✅ 如果是群聊，直接复用 ID
+        recipientId: isGroup ? '' : contact.id, // 群聊无 recipientId
         name: contact.name,
         avatar: contact.avatarUrl ?? '',
         lastMessage: '',
-        lastMessageAt: DateTime.now(), // 使用 DateTime
-        isGroup: false,
+        lastMessageAt: DateTime.now(),
+        isGroup: isGroup,
       );
+
+      final db = ref.read(objectBoxProvider);
+      db.saveConversation(newConv);
+      currentList.insert(0, newConv);
       state = AsyncData([newConv, ...currentList]);
       ref.read(selectedConversationIndexProvider.notifier).set(0);
     }
@@ -81,6 +143,7 @@ class ConversationList extends _$ConversationList {
     currentList.removeWhere((c) => c.uuid == uuid);
     state = AsyncData(currentList);
     ref.read(selectedConversationIndexProvider.notifier).set(0);
+    final db = ref.read(objectBoxProvider);
   }
 
   // 收到消息更新列表

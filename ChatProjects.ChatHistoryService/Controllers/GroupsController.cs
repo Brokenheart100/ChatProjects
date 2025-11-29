@@ -1,20 +1,23 @@
 ﻿using ChatProjects.ChatHistoryService.Data;
 using ChatProjects.ChatHistoryService.Dtos;
 using ChatProjects.ChatHistoryService.Models;
+using ChatProjects.Contracts.Events;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Wolverine;
 
 namespace ChatProjects.ChatHistoryService.Controllers;
 
 [ApiController]
 [Route("api/groups")]
 [Authorize]
-public class GroupsController(ChatHistoryDbContext context, ILogger<GroupsController> logger) : ControllerBase
+public class GroupsController(ChatHistoryDbContext context, ILogger<GroupsController> logger, IMessageBus messageBus) : ControllerBase
 {
     private readonly ChatHistoryDbContext _context = context;
     private readonly ILogger<GroupsController> _logger = logger;
+    private readonly IMessageBus _messageBus=messageBus;
 
     [HttpPost]
     public async Task<IActionResult> CreateGroup([FromBody] CreateGroupDto dto)
@@ -62,6 +65,18 @@ public class GroupsController(ChatHistoryDbContext context, ILogger<GroupsContro
                 await transaction.CommitAsync();
 
                 _logger.LogInformation("✅ [CreateGroup] 群聊创建成功: {GroupId}", groupId);
+
+
+                var allMembers = dto.MemberIds.Append(currentUserId).Distinct().ToList();
+
+                await _messageBus.PublishAsync(new GroupCreatedEvent(
+                    groupId,
+                    dto.GroupName,
+                    currentUserId,
+                    allMembers,
+                    DateTime.UtcNow
+                ));
+
 
                 // 这里虽然没有发 System Event，但为了简化先返回成功
                 return Ok(new { GroupId = groupId });

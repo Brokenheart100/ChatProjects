@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
+import 'package:flutterchat/services/logger_service.dart';
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:flutterchat/widgets/custom_search_field.dart';
 
@@ -163,7 +164,6 @@ class ConversationList extends ConsumerWidget {
           icon: Icons.delete_outline,
           text: '从消息列表中移除',
           onTap: () {
-            // ✅ 修复 3：传入 uuid (String)，而不是 id (int)
             ref
                 .read(conversationListProvider.notifier)
                 .delete(conversation.uuid);
