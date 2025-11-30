@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutterchat/screens/views/group_list_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutterchat/providers/services_provider.dart';
@@ -111,6 +112,14 @@ GoRouter router(RouterRef ref) {
               GoRoute(
                 path: '/contacts',
                 builder: (context, state) => const ContactView(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/groups', // 路由路径
+                builder: (context, state) => const GroupListView(), // 刚才创建的视图
               ),
             ],
           ),

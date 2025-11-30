@@ -6,7 +6,6 @@ import 'package:flutterchat/objectbox.g.dart';
 import 'package:flutterchat/models/chat_message.dart';
 import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/models/user_entity.dart'; // ✅ 必须引入这个
-import 'package:flutterchat/services/logger_service.dart';
 
 class ObjectBoxService {
   late final Store store;

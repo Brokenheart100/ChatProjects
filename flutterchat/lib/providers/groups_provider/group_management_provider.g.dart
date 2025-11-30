@@ -1,12 +1,12 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'group_provider.dart';
+part of 'group_management_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$groupManagerHash() => r'47e93a1861d74d3d727643476b135e9ed4b79e46';
+String _$groupManagementHash() => r'11789e9037bd5c354b10328973a04074306d9fa1';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -29,36 +29,36 @@ class _SystemHash {
   }
 }
 
-abstract class _$GroupManager
-    extends BuildlessAutoDisposeAsyncNotifier<GroupMemberState> {
+abstract class _$GroupManagement
+    extends BuildlessAutoDisposeAsyncNotifier<GroupDetail> {
   late final String groupId;
 
-  FutureOr<GroupMemberState> build(
+  FutureOr<GroupDetail> build(
     String groupId,
   );
 }
 
-/// See also [GroupManager].
-@ProviderFor(GroupManager)
-const groupManagerProvider = GroupManagerFamily();
+/// See also [GroupManagement].
+@ProviderFor(GroupManagement)
+const groupManagementProvider = GroupManagementFamily();
 
-/// See also [GroupManager].
-class GroupManagerFamily extends Family<AsyncValue<GroupMemberState>> {
-  /// See also [GroupManager].
-  const GroupManagerFamily();
+/// See also [GroupManagement].
+class GroupManagementFamily extends Family<AsyncValue<GroupDetail>> {
+  /// See also [GroupManagement].
+  const GroupManagementFamily();
 
-  /// See also [GroupManager].
-  GroupManagerProvider call(
+  /// See also [GroupManagement].
+  GroupManagementProvider call(
     String groupId,
   ) {
-    return GroupManagerProvider(
+    return GroupManagementProvider(
       groupId,
     );
   }
 
   @override
-  GroupManagerProvider getProviderOverride(
-    covariant GroupManagerProvider provider,
+  GroupManagementProvider getProviderOverride(
+    covariant GroupManagementProvider provider,
   ) {
     return call(
       provider.groupId,
@@ -77,30 +77,30 @@ class GroupManagerFamily extends Family<AsyncValue<GroupMemberState>> {
       _allTransitiveDependencies;
 
   @override
-  String? get name => r'groupManagerProvider';
+  String? get name => r'groupManagementProvider';
 }
 
-/// See also [GroupManager].
-class GroupManagerProvider extends AutoDisposeAsyncNotifierProviderImpl<
-    GroupManager, GroupMemberState> {
-  /// See also [GroupManager].
-  GroupManagerProvider(
+/// See also [GroupManagement].
+class GroupManagementProvider
+    extends AutoDisposeAsyncNotifierProviderImpl<GroupManagement, GroupDetail> {
+  /// See also [GroupManagement].
+  GroupManagementProvider(
     String groupId,
   ) : this._internal(
-          () => GroupManager()..groupId = groupId,
-          from: groupManagerProvider,
-          name: r'groupManagerProvider',
+          () => GroupManagement()..groupId = groupId,
+          from: groupManagementProvider,
+          name: r'groupManagementProvider',
           debugGetCreateSourceHash:
               const bool.fromEnvironment('dart.vm.product')
                   ? null
-                  : _$groupManagerHash,
-          dependencies: GroupManagerFamily._dependencies,
+                  : _$groupManagementHash,
+          dependencies: GroupManagementFamily._dependencies,
           allTransitiveDependencies:
-              GroupManagerFamily._allTransitiveDependencies,
+              GroupManagementFamily._allTransitiveDependencies,
           groupId: groupId,
         );
 
-  GroupManagerProvider._internal(
+  GroupManagementProvider._internal(
     super._createNotifier, {
     required super.name,
     required super.dependencies,
@@ -113,8 +113,8 @@ class GroupManagerProvider extends AutoDisposeAsyncNotifierProviderImpl<
   final String groupId;
 
   @override
-  FutureOr<GroupMemberState> runNotifierBuild(
-    covariant GroupManager notifier,
+  FutureOr<GroupDetail> runNotifierBuild(
+    covariant GroupManagement notifier,
   ) {
     return notifier.build(
       groupId,
@@ -122,10 +122,10 @@ class GroupManagerProvider extends AutoDisposeAsyncNotifierProviderImpl<
   }
 
   @override
-  Override overrideWith(GroupManager Function() create) {
+  Override overrideWith(GroupManagement Function() create) {
     return ProviderOverride(
       origin: this,
-      override: GroupManagerProvider._internal(
+      override: GroupManagementProvider._internal(
         () => create()..groupId = groupId,
         from: from,
         name: null,
@@ -138,14 +138,14 @@ class GroupManagerProvider extends AutoDisposeAsyncNotifierProviderImpl<
   }
 
   @override
-  AutoDisposeAsyncNotifierProviderElement<GroupManager, GroupMemberState>
+  AutoDisposeAsyncNotifierProviderElement<GroupManagement, GroupDetail>
       createElement() {
-    return _GroupManagerProviderElement(this);
+    return _GroupManagementProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is GroupManagerProvider && other.groupId == groupId;
+    return other is GroupManagementProvider && other.groupId == groupId;
   }
 
   @override
@@ -157,18 +157,18 @@ class GroupManagerProvider extends AutoDisposeAsyncNotifierProviderImpl<
   }
 }
 
-mixin GroupManagerRef on AutoDisposeAsyncNotifierProviderRef<GroupMemberState> {
+mixin GroupManagementRef on AutoDisposeAsyncNotifierProviderRef<GroupDetail> {
   /// The parameter `groupId` of this provider.
   String get groupId;
 }
 
-class _GroupManagerProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<GroupManager,
-        GroupMemberState> with GroupManagerRef {
-  _GroupManagerProviderElement(super.provider);
+class _GroupManagementProviderElement
+    extends AutoDisposeAsyncNotifierProviderElement<GroupManagement,
+        GroupDetail> with GroupManagementRef {
+  _GroupManagementProviderElement(super.provider);
 
   @override
-  String get groupId => (origin as GroupManagerProvider).groupId;
+  String get groupId => (origin as GroupManagementProvider).groupId;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

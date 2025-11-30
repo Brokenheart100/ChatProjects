@@ -44,8 +44,8 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               // 取消按钮
               TextButton(
                 onPressed: () {
-                  // ✅ 核心修复：切换回普通聊天视图
-                  ref.read(chatSubStateProvider.notifier).state = ChatSubState.normal;
+                  ref.read(chatSubStateProvider.notifier).state =
+                      ChatSubState.normal;
                 },
                 child:
                     const Text("取消", style: TextStyle(color: Colors.white54)),
@@ -155,11 +155,11 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       final groupName = _nameController.text;
 
       final newConv = Conversation(
-        id: 0, 
-        uuid: newGroupId, 
-        recipientId: '', 
+        id: 0,
+        uuid: newGroupId,
+        recipientId: '',
         name: groupName,
-        avatar: '', 
+        avatar: '',
         lastMessage: '群聊已创建',
         lastMessageAt: DateTime.now(),
         isGroup: true,
@@ -185,10 +185,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           )
           .catchError((e) {
         if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
                 content: Text("同步服务器失败: $e"), backgroundColor: Colors.orange),
-            );
+          );
         }
       });
     } catch (e) {

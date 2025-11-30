@@ -31,14 +31,23 @@ class Chat extends _$Chat {
       final history = await api.getMessageHistory(conversationId,
           currentUserId: currentUserId);
 
-      final processed = history.map((m) {
-        if (m.isMe) {
-          return m.copyWith(
-              avatar: api
-                  .getFullAvatarUrl(ref.read(currentUserProvider)!.avatarUrl));
-        }
-        return m;
-      }).toList();
+      // ✅ 修复：处理可空类型
+      final processed = history
+          .map((m) {
+            // 1. 防御性判空
+            // 虽然业务上不该有 null，但为了消除编译器报错，必须处理
+            if (m == null) return null;
+
+            if (m.isMe) {
+              return m.copyWith(
+                  avatar: api.getFullAvatarUrl(
+                      ref.read(currentUserProvider)!.avatarUrl));
+            }
+            return m;
+          })
+          // 2. 过滤掉所有的 null 值，确保结果是非空列表
+          .whereType<ChatMessage>()
+          .toList();
 
       db.saveMessages(processed);
     } catch (e) {
@@ -99,7 +108,6 @@ class Chat extends _$Chat {
       await api.sendMessage(conversationId, text,
           contentType: 0, recipientId: recipientId);
 
-      // ✅ 修复：移除 await
       db.saveMessage(tempMsg.copyWith(status: 1));
     } catch (e) {
       logger.e("发送失败", error: e);
@@ -135,18 +143,15 @@ class Chat extends _$Chat {
       status: 0,
     );
 
-    // ✅ 修复：移除 await
     db.saveMessage(tempMsg);
 
     try {
       await api.sendMessage(conversationId, objectKey,
           contentType: 1, recipientId: recipientId);
 
-      // ✅ 修复：移除 await
       db.saveMessage(tempMsg.copyWith(status: 1));
     } catch (e) {
       logger.e("图片发送业务失败", error: e);
-      // ✅ 修复：移除 await
       db.saveMessage(tempMsg.copyWith(status: 2));
     }
   }

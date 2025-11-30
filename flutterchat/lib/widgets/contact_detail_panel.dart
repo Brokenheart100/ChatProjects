@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
+import 'package:flutterchat/screens/views/chat_view.dart';
 import 'package:go_router/go_router.dart';
 
 class ContactDetailPanel extends ConsumerStatefulWidget {
@@ -255,6 +256,7 @@ class _ContactDetailPanelState extends ConsumerState<ContactDetailPanel> {
                 .read(conversationListProvider.notifier)
                 .createOrSelect(widget.contact);
 
+            ref.read(chatSubStateProvider.notifier).state = ChatSubState.normal;
             // 2. 路由跳转：切换到聊天 Tab
             // GoRouter 会自动识别这是一个 ShellRoute 分支切换
             context.go('/chat');

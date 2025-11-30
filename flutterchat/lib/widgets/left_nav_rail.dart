@@ -47,6 +47,7 @@ class LeftNavRail extends StatelessWidget {
             tooltip: '注销', // 鼠标悬停时显示的提示文字
             onPressed: onLogout, // 点击时调用我们传入的回调
           ),
+          _buildNavIcon(Icons.groups, 2, hasNotification: false),
           // 构建导航图标：星标图标（索引2，带有通知标记）
           _buildNavIcon(Icons.star, 2, hasNotification: true),
           // 构建导航图标：标签图标（索引3）

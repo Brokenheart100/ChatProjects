@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutterchat/providers/user_profile_provider.dart';
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutterchat/models/chat_message.dart';
@@ -84,7 +85,7 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       decoration: const BoxDecoration(
         color: Color(0xFF333333),
         image: DecorationImage(
-          image: AssetImage('assets/Image/27.jpg'),
+          image: AssetImage('assets/Image/28.jpg'),
           fit: BoxFit.cover,
           opacity: 0.1,
         ),
@@ -230,40 +231,106 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   }
 
   Widget _buildOthersMessage(ChatMessage message) {
-    final displayAvatar =
-        message.avatar.isNotEmpty ? message.avatar : widget.conversation.avatar;
-    final displayName = widget.conversation.name;
+    // ------------------------------------------------------
+    // 场景 A: 私聊
+    // ------------------------------------------------------
+    if (!widget.conversation.isGroup) {
+      // 私聊直接显示头像，不需要显示名字（或者名字就是会话名）
+      // 如果消息里没带头像，就用会话头像（对方头像）兜底
+      final displayAvatar = message.avatar.isNotEmpty
+          ? message.avatar
+          : widget.conversation.avatar;
+
+      return _buildMessageRow(
+        message,
+        displayName: "", // 私聊通常不显示名字，如果想显示就传 widget.conversation.name
+        avatarUrl: displayAvatar,
+        showName: false, // 私聊隐藏名字栏
+      );
+    }
+
+    // ------------------------------------------------------
+    // 场景 B: 群聊 (核心修复)
+    // ------------------------------------------------------
+    // 必须使用 Consumer 去监听 UserProfileProvider，根据 senderId 查名字
+    return Consumer(
+      builder: (context, ref, child) {
+        final userAsync = ref.watch(userProfileProvider(message.senderId));
+
+        return userAsync.when(
+          // 1. 查到了：显示真实昵称和头像
+          data: (user) => _buildMessageRow(
+            message,
+            displayName: user.username,
+            avatarUrl: user.avatarUrl,
+            showName: true,
+          ),
+          // 2. 加载中：显示 Loading 占位
+          loading: () => _buildMessageRow(
+            message,
+            displayName: "...",
+            avatarUrl: "",
+            showName: true,
+          ),
+          // 3. 出错/没查到：显示 ID 或未知
+          error: (_, __) => _buildMessageRow(
+            message,
+            displayName: "未知用户", // 或者 message.senderId
+            avatarUrl: "",
+            showName: true,
+          ),
+        );
+      },
+    );
+  }
+
+  /// ✅ 提取出来的通用构建方法 (避免代码重复)
+  Widget _buildMessageRow(
+    ChatMessage message, {
+    required String displayName,
+    required String? avatarUrl,
+    required bool showName,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 头像
           CustomCircleAvatar(
-            avatarUrl: displayAvatar,
+            avatarUrl: avatarUrl,
             radius: 18,
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                displayName,
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.5),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF434343),
-                  borderRadius: BorderRadius.circular(8),
+
+          // 内容区域
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 仅在群聊显示名字
+                if (showName) ...[
+                  Text(
+                    displayName,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                // 气泡
+                Container(
+                  constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF434343),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: _buildMessageContent(message),
                 ),
-                child: _buildMessageContent(message),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

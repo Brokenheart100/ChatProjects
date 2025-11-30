@@ -197,13 +197,21 @@ class ConversationList extends _$ConversationList {
   void addManualItem(Conversation newConv) {
     final currentList = List<Conversation>.from(state.value ?? []);
 
-    // 避免重复添加
-    if (currentList.any((c) => c.uuid == newConv.uuid)) return;
+    // 1. 查重 (防止重复添加)
+    final index = currentList.indexWhere((c) => c.uuid == newConv.uuid);
+    if (index != -1) {
+      // 已存在，直接选中
+      ref.read(selectedConversationIndexProvider.notifier).set(index);
+      return;
+    }
 
+    // 2. 插入头部
     currentList.insert(0, newConv);
+
+    // 3. 更新状态
     state = AsyncData(currentList);
 
-    // 选中第一个 (即刚添加的这个)
+    // 4. ✅ 关键：必须选中第 0 项，这样切换回 ChatView 时，显示的就是新群聊
     ref.read(selectedConversationIndexProvider.notifier).set(0);
   }
 }
