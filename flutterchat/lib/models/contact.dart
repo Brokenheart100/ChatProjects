@@ -7,7 +7,7 @@ class Contact {
 
   // remark 通常是用户自己设置的，可以与 name 不同
   final String remark;
-
+  final bool isGroup;
   // --- 为详情页预留的可空字段 ---
   // 当后端API返回更多信息时，可以填充这些字段
   final String? qqNumber;
@@ -37,5 +37,6 @@ class Contact {
     this.signature,
     this.groupName,
     this.photos = const [], // 默认为一个空的列表
+    this.isGroup = false,
   });
 }

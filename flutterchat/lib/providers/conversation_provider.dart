@@ -95,45 +95,57 @@ class ConversationList extends _$ConversationList {
     }
   }
 
-  // 创建新会话
   void createOrSelect(Contact contact) {
-    logger.i("👉 [createOrSelect] 点击联系人: ${contact.name} (ID: ${contact.id})");
+    logger.i(
+        "👉 [createOrSelect] 点击: ${contact.name} (isGroup: ${contact.isGroup})");
 
-    final currentList = state.value ?? [];
+    final currentList = List<Conversation>.from(state.value ?? []);
 
-    // ✅ 修复：优先匹配 uuid (针对群聊)，再匹配 recipientId (针对私聊)
-    int index = currentList.indexWhere((c) => c.uuid == contact.id);
-
-    if (index == -1) {
-      index = currentList.indexWhere((c) => c.recipientId == contact.id);
+    // 1. 尝试匹配 (逻辑不变)
+    int index = -1;
+    // 群聊匹配 UUID
+    if (contact.isGroup) {
+      index = currentList.indexWhere((c) => c.uuid == contact.id);
+    } else {
+      // 私聊匹配 RecipientId
+      index = currentList
+          .indexWhere((c) => !c.isGroup && c.recipientId == contact.id);
     }
 
     if (index != -1) {
-      logger.i("📂 [createOrSelect] 找到已有会话 (Index: $index)，直接选中");
+      logger.i("📂 找到列表中的会话，直接选中");
       ref.read(selectedConversationIndexProvider.notifier).set(index);
     } else {
-      // 新建 (私聊)
+      // 2. 没找到 (可能是被移除了，或者是新私聊)
+      logger.i("🆕 列表中未找到，准备恢复或创建...");
 
-      final isGroup = contact.id.length == 36; // 简单判断
+      // ✅ 核心修复：
+      // 如果是群聊 (isGroup=true)：必须复用 contact.id 作为会话 UUID (找回历史记录的关键!)
+      // 如果是私聊 (isGroup=false)：生成新的随机 UUID
+      final useContactIdAsUuid = contact.isGroup;
 
-      final newUuid = isGroup ? contact.id : const Uuid().v4();
-      logger.i("🆕 [createOrSelect] 未找到会话，创建新会话");
+      final newUuid = useContactIdAsUuid ? contact.id : const Uuid().v4();
+
       final newConv = Conversation(
         id: 0,
-        uuid: newUuid, // ✅ 如果是群聊，直接复用 ID
-        recipientId: isGroup ? '' : contact.id, // 群聊无 recipientId
+        uuid: newUuid, // 群聊复用旧ID，私聊用新ID
+        recipientId: contact.isGroup ? '' : contact.id, // 群聊无接收人
         name: contact.name,
         avatar: contact.avatarUrl ?? '',
-        lastMessage: '',
+        lastMessage: '', // 暂时为空，进去后 ObjectBox 会加载历史
         lastMessageAt: DateTime.now(),
-        isGroup: isGroup,
+        isGroup: contact.isGroup,
       );
 
+      // 3. 存入 DB 并更新 UI
       final db = ref.read(objectBoxProvider);
       db.saveConversation(newConv);
+
       currentList.insert(0, newConv);
-      state = AsyncData([newConv, ...currentList]);
+      state = AsyncData(currentList);
       ref.read(selectedConversationIndexProvider.notifier).set(0);
+
+      logger.i("✨ 会话已恢复/创建: ${newConv.name} (UUID: $newUuid)");
     }
   }
 
@@ -143,7 +155,7 @@ class ConversationList extends _$ConversationList {
     currentList.removeWhere((c) => c.uuid == uuid);
     state = AsyncData(currentList);
     ref.read(selectedConversationIndexProvider.notifier).set(0);
-    final db = ref.read(objectBoxProvider);
+    ref.read(objectBoxProvider);
   }
 
   // 收到消息更新列表
@@ -158,7 +170,8 @@ class ConversationList extends _$ConversationList {
     }
 
     // ✅ 修复：比对 uuid (String)
-    final index = currentList.indexWhere((c) => c.uuid == convId);
+    final index = currentList.indexWhere(
+        (c) => c.uuid.trim().toLowerCase() == convId.trim().toLowerCase());
 
     if (index != -1) {
       final old = currentList[index];
@@ -198,7 +211,8 @@ class ConversationList extends _$ConversationList {
     final currentList = List<Conversation>.from(state.value ?? []);
 
     // 1. 查重 (防止重复添加)
-    final index = currentList.indexWhere((c) => c.uuid == newConv.uuid);
+    final index = currentList.indexWhere((c) =>
+        c.uuid.trim().toLowerCase() == newConv.uuid.trim().toLowerCase());
     if (index != -1) {
       // 已存在，直接选中
       ref.read(selectedConversationIndexProvider.notifier).set(index);

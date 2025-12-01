@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
-import 'package:flutterchat/services/logger_service.dart';
+import 'package:flutterchat/services/logger_service.dart'; // ✅ 引入 Logger
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:flutterchat/widgets/custom_search_field.dart';
 
@@ -26,6 +26,9 @@ class ConversationList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 渲染时日志 (频率较高，如果不调试可注释)
+    logger.d("📋 [ConversationList] 渲染列表，共 ${conversations.length} 个会话");
+
     return Container(
       width: 280,
       color: const Color(0xFF3D3D3D),
@@ -49,10 +52,17 @@ class ConversationList extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final conversation = conversations[index];
                 final isSelected = selectedIndex == index;
-
+                logger.i(
+                    "👆 [ConversationList] : ${conversation.name} (ID: ${conversation.uuid}) recipientId:${conversation.recipientId}");
                 return GestureDetector(
-                  onTap: () => onTap(index),
+                  onTap: () {
+                    logger.i(
+                        "👆 [ConversationList] 点击会话: ${conversation.name} (ID: ${conversation.uuid})");
+                    onTap(index);
+                  },
                   onSecondaryTapDown: (details) {
+                    logger.i(
+                        "🖱️ [ConversationList] 右键点击会话: ${conversation.name}");
                     _showContextMenu(
                         context, ref, details.globalPosition, conversation);
                   },
@@ -92,7 +102,6 @@ class ConversationList extends ConsumerWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  // ✅ 修复 1：使用格式化方法处理 DateTime
                                   Text(
                                     _formatTime(conversation.lastMessageAt),
                                     style: const TextStyle(
@@ -113,9 +122,6 @@ class ConversationList extends ConsumerWidget {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  // ✅ 修复 2：暂时移除 isMuted，或默认为 false
-                                  // if (conversation.isMuted)
-                                  //   const Icon(Icons.notifications_off, size: 14, color: Colors.white38),
                                 ],
                               ),
                             ],
@@ -151,19 +157,24 @@ class ConversationList extends ConsumerWidget {
           icon: Icons.vertical_align_top,
           text: '置顶',
           onTap: () {
-            debugPrint('置顶: ${conversation.name}');
+            logger.i("📌 [ConversationList] 点击置顶: ${conversation.name}");
+            // TODO: 实现置顶逻辑
           },
         ),
         _buildMenuItem(
           icon: Icons.mark_chat_unread_outlined,
           text: '标记未读',
-          onTap: () {},
+          onTap: () {
+            logger.i("🔴 [ConversationList] 点击标记未读: ${conversation.name}");
+          },
         ),
         const PopupMenuDivider(height: 1),
         _buildMenuItem(
           icon: Icons.delete_outline,
           text: '从消息列表中移除',
           onTap: () {
+            logger.w(
+                "🗑️ [ConversationList] 移除会话: ${conversation.name} (ID: ${conversation.uuid})");
             ref
                 .read(conversationListProvider.notifier)
                 .delete(conversation.uuid);
@@ -202,6 +213,7 @@ class ConversationList extends ConsumerWidget {
       ),
       offset: const Offset(0, 40),
       onSelected: (ConversationMenuAction value) {
+        logger.i("➕ [ConversationList] 顶部菜单选中: $value");
         if (value == ConversationMenuAction.addFriend) {
           onAddFriend?.call();
         } else if (value == ConversationMenuAction.createGroup) {

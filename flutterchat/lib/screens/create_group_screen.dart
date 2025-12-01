@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutterchat/screens/views/group_chat_view.dart';
+import 'package:go_router/go_router.dart'; // ✅ 引入 GoRouter
 import 'package:uuid/uuid.dart';
 import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/providers/contact_provider.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
 import 'package:flutterchat/providers/services_provider.dart';
-import 'package:flutterchat/screens/views/chat_view.dart'; // ✅ 引入 chatSubStateProvider
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
+// 引入 GroupListView 中定义的局部状态 Provider
 
 class CreateGroupScreen extends ConsumerStatefulWidget {
   const CreateGroupScreen({super.key});
@@ -30,7 +32,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 头部
           Row(
             children: [
               const Text(
@@ -41,17 +42,17 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                     fontWeight: FontWeight.bold),
               ),
               const Spacer(),
-              // 取消按钮
               TextButton(
                 onPressed: () {
-                  ref.read(chatSubStateProvider.notifier).state =
-                      ChatSubState.normal;
+                  // ✅ 修复：点击取消时，重置 GroupListView 的内部状态，回到列表视图
+                  // (如果你是在 /groups 路由下嵌入显示的)
+                  ref.read(groupChatSubStateProvider.notifier).state =
+                      GroupChatSubState.normal;
                 },
                 child:
                     const Text("取消", style: TextStyle(color: Colors.white54)),
               ),
               const SizedBox(width: 16),
-              // 创建按钮
               ElevatedButton(
                 onPressed: _selectedUserIds.isEmpty ||
                         _nameController.text.isEmpty ||
@@ -72,10 +73,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 30),
-
-          // 群名称输入
           TextField(
             controller: _nameController,
             style: const TextStyle(color: Colors.white),
@@ -89,13 +87,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
             ),
             onChanged: (_) => setState(() {}),
           ),
-
           const SizedBox(height: 30),
           const Text("选择群成员",
               style: TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 10),
-
-          // 好友列表
           Expanded(
             child: contactsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -165,17 +160,15 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
         isGroup: true,
       );
 
-      // 3. 写入本地库
       ref.read(objectBoxProvider).saveConversation(newConv);
-
-      // 4. 更新列表
       ref.read(conversationListProvider.notifier).addManualItem(newConv);
 
-      // 5. ✅ 核心修复：切换 UI 状态
-      // 告诉 ChatView：别显示 CreateGroupScreen 了，显示 ChatPanel 吧
-      ref.read(chatSubStateProvider.notifier).state = ChatSubState.normal;
+      // ✅ 核心修复：创建成功后，直接跳转到 /chat 路由
+      // GoRouter 会自动切换左侧导航到 Index 0，并显示会话列表（新群已在置顶）
+      if (mounted) {
+        context.go('/chat');
+      }
 
-      // 6. 后台调用 API
       ref
           .read(apiServiceProvider)
           .createGroup(
@@ -196,6 +189,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("创建失败: $e"), backgroundColor: Colors.red),
         );
+      }
+    } finally {
+      if (mounted) {
         setState(() => _isCreating = false);
       }
     }

@@ -53,6 +53,7 @@ Future<List<ContactGroup>> contactList(ContactListRef ref) async {
             name: c.name,
             avatarUrl: c.avatar,
             remark: c.name, // 群聊备注暂同名
+            isGroup: true,
           ))
       .toList();
 
@@ -65,6 +66,7 @@ Future<List<ContactGroup>> contactList(ContactListRef ref) async {
               name: f.username,
               avatarUrl: api.getFullAvatarUrl(f.avatarUrl),
               remark: f.username,
+              isGroup: false,
             ))
         .toList(),
   );
