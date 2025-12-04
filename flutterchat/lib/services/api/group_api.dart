@@ -5,6 +5,15 @@ import 'package:flutterchat/services/api/api_base.dart';
 import 'package:flutterchat/services/logger_service.dart';
 
 mixin GroupApi on ApiBase {
+  Future<void> reportOnline() async {
+    try {
+      // 调用刚才写的后端接口
+      await dio.post('/gateway/users/status/online');
+    } catch (e) {
+      logger.w("上报在线状态失败 (不影响使用): $e");
+    }
+  }
+
   /// 创建群聊
   /// [id]: 前端生成的 UUID
   Future<void> createGroup(

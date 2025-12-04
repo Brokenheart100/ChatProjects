@@ -63,4 +63,8 @@ mixin AuthApi on ApiBase {
   Future<void> saveToken(String token) async {
     await ApiClient().saveToken(token);
   }
+
+  Future<void> removeToken() async {
+    await ApiClient().removeToken();
+  }
 }

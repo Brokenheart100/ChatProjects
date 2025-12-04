@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:6522613810587745459",
-      "lastPropertyId": "8:4336788523471131531",
+      "lastPropertyId": "9:2744350790565832998",
       "name": "Conversation",
       "properties": [
         {
@@ -50,6 +50,11 @@
           "id": "8:4336788523471131531",
           "name": "isGroup",
           "type": 1
+        },
+        {
+          "id": "9:2744350790565832998",
+          "name": "unreadCount",
+          "type": 6
         }
       ],
       "relations": []

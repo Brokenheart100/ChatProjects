@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/providers/user_profile_provider.dart';
+import 'package:flutterchat/services/logger_service.dart'; // ✅ 引入 Logger
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutterchat/models/chat_message.dart';
 import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/providers/chat_provider.dart';
 import 'package:flutterchat/providers/services_provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 
 class ChatPanel extends ConsumerStatefulWidget {
   final Conversation conversation;
@@ -23,6 +27,14 @@ class ChatPanel extends ConsumerStatefulWidget {
 class _ChatPanelState extends ConsumerState<ChatPanel> {
   final _textController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  bool _isDragging = false;
+
+  @override
+  void initState() {
+    super.initState();
+    logger.i(
+        "🎨 [ChatPanel] 初始化: ${widget.conversation.name} (UUID: ${widget.conversation.uuid}, isGroup: ${widget.conversation.isGroup})");
+  }
 
   @override
   void dispose() {
@@ -34,10 +46,10 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
+    logger.i("📤 [ChatPanel] 发送文本: $text");
     ref
         .read(chatProvider(
-                widget.conversation.uuid, // ✅ 修改点：使用 uuid (String)
-                widget.conversation.recipientId)
+                widget.conversation.uuid, widget.conversation.recipientId)
             .notifier)
         .sendText(text);
     _textController.clear();
@@ -48,15 +60,44 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       final XFile? pickedFile =
           await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null && mounted) {
-        ref
-            .read(chatProvider(
-                    widget.conversation.uuid, // ✅ 修改点：使用 uuid
-                    widget.conversation.recipientId)
-                .notifier)
-            .sendImage(pickedFile);
+        _sendImageFile(pickedFile);
       }
     } catch (e) {
       debugPrint("图片选择失败: $e");
+    }
+  }
+
+  // ✅ 提取发送图片的公共方法
+  void _sendImageFile(XFile file) {
+    ref
+        .read(chatProvider(
+                widget.conversation.uuid, widget.conversation.recipientId)
+            .notifier)
+        .sendImage(file);
+  }
+
+  Future<void> _handleDroppedFiles(List<XFile> files) async {
+    final notifier = ref.read(
+        chatProvider(widget.conversation.uuid, widget.conversation.recipientId)
+            .notifier);
+
+    for (final file in files) {
+      // 简单判断文件扩展名
+      final ext = file.name.split('.').last.toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].contains(ext)) {
+        logger.i("📤 [Drop] 检测到图片，准备发送: ${file.path}");
+        notifier.sendImage(file);
+      } else {
+        // TODO: 后续支持发送普通文件 (FileApi)
+        logger.w("⚠️ [Drop] 不支持的文件类型: $ext");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text("暂不支持发送 $ext 文件"),
+                backgroundColor: Colors.orange),
+          );
+        }
+      }
     }
   }
 
@@ -64,15 +105,16 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
     final currentUserId = currentUser?.userId ?? '';
-    // ✅ 修改点：使用 uuid
+
     final chatAsyncValue = ref.watch(chatProvider(
         widget.conversation.uuid, widget.conversation.recipientId));
 
-    // ✅ 修改点：使用 uuid
+    // 监听错误
     ref.listen(
         chatProvider(widget.conversation.uuid, widget.conversation.recipientId),
         (previous, next) {
       if (next is AsyncError) {
+        logger.e("❌ [ChatPanel] Provider 发生错误: ${next.error}");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text("发生错误: ${next.error}"),
@@ -81,42 +123,80 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       }
     });
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF333333),
-        image: DecorationImage(
-          image: AssetImage('assets/Image/28.jpg'),
-          fit: BoxFit.cover,
-          opacity: 0.1,
-        ),
-      ),
-      child: Column(
+    // ✅ 4. 使用 DropTarget 包裹整个界面
+    return DropTarget(
+      onDragEntered: (details) {
+        setState(() => _isDragging = true);
+      },
+      onDragExited: (details) {
+        setState(() => _isDragging = false);
+      },
+      onDragDone: (details) {
+        setState(() => _isDragging = false);
+        _handleDroppedFiles(details.files);
+      },
+      child: Stack(
         children: [
-          _buildHeader(),
-          Expanded(
-            child: chatAsyncValue.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(
-                  child: Text('加载失败: $err',
-                      style: const TextStyle(color: Colors.white54))),
-              data: (messages) {
-                return ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  reverse: true,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    final isMe = message.senderId.toLowerCase() ==
-                        currentUserId.toLowerCase();
-                    return isMe
-                        ? _buildMyMessage(message)
-                        : _buildOthersMessage(message);
-                  },
-                );
-              },
+          // 原有内容
+          Container(
+            color: const Color(0xFF333333),
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: chatAsyncValue.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (err, stack) => Center(
+                        child: Text('加载失败: $err',
+                            style: const TextStyle(color: Colors.white54))),
+                    data: (messages) {
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 20),
+                        reverse: true,
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final message = messages[index];
+                          final isMe = message.senderId.toLowerCase() ==
+                              currentUserId.toLowerCase();
+                          return isMe
+                              ? _buildMyMessage(message)
+                              : _buildOthersMessage(message);
+                        },
+                      );
+                    },
+                  ),
+                ),
+                _buildInputArea(),
+              ],
             ),
           ),
-          _buildInputArea(),
+
+          // ✅ 5. 拖拽时的覆盖层 (Overlay)
+          if (_isDragging)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withAlpha(77),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_upload_outlined,
+                          size: 60, color: Colors.white),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "松开鼠标发送图片",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -140,7 +220,20 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
           const SizedBox(width: 16),
           const Icon(Icons.videocam, color: Colors.white70, size: 20),
           const SizedBox(width: 16),
-          const Icon(Icons.more_horiz, color: Colors.white70, size: 20),
+          IconButton(
+            icon: const Icon(Icons.more_horiz),
+            onPressed: () {
+              logger.i(
+                  "⚙️ [ChatPanel] 点击设置按钮 (IsGroup: ${widget.conversation.isGroup})");
+              if (widget.conversation.isGroup) {
+                context
+                    .push('/chat/group-settings/${widget.conversation.uuid}');
+              } else {
+                context.push(
+                    '/chat/user-profile/${widget.conversation.recipientId}');
+              }
+            },
+          ),
         ],
       ),
     );
@@ -227,89 +320,73 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
           ),
         ],
       ),
-    );
+    )
+        .animate()
+        .fade(duration: 300.ms)
+        .moveX(begin: 30, end: 0, curve: Curves.easeOutBack)
+        .scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack);
   }
 
   Widget _buildOthersMessage(ChatMessage message) {
-    // ------------------------------------------------------
-    // 场景 A: 私聊
-    // ------------------------------------------------------
+    // 1. 私聊场景
     if (!widget.conversation.isGroup) {
-      // 私聊直接显示头像，不需要显示名字（或者名字就是会话名）
-      // 如果消息里没带头像，就用会话头像（对方头像）兜底
       final displayAvatar = message.avatar.isNotEmpty
           ? message.avatar
           : widget.conversation.avatar;
 
       return _buildMessageRow(
         message,
-        displayName: "", // 私聊通常不显示名字，如果想显示就传 widget.conversation.name
+        displayName: "",
         avatarUrl: displayAvatar,
-        showName: false, // 私聊隐藏名字栏
+        showName: false,
       );
     }
 
-    // ------------------------------------------------------
-    // 场景 B: 群聊 (核心修复)
-    // ------------------------------------------------------
-    // 必须使用 Consumer 去监听 UserProfileProvider，根据 senderId 查名字
+    // 2. 群聊场景 (使用 Provider)
     return Consumer(
       builder: (context, ref, child) {
         final userAsync = ref.watch(userProfileProvider(message.senderId));
 
-        return userAsync.when(
-          // 1. 查到了：显示真实昵称和头像
-          data: (user) => _buildMessageRow(
+        return userAsync.when(data: (user) {
+          // 🔍 调试日志：打印渲染信息
+          // logger.d("👤 [ChatPanel] 渲染群友: ${user.username} (ID: ${user.userId})");
+          return _buildMessageRow(
             message,
             displayName: user.username,
             avatarUrl: user.avatarUrl,
             showName: true,
-          ),
-          // 2. 加载中：显示 Loading 占位
-          loading: () => _buildMessageRow(
-            message,
-            displayName: "...",
-            avatarUrl: "",
-            showName: true,
-          ),
-          // 3. 出错/没查到：显示 ID 或未知
-          error: (_, __) => _buildMessageRow(
-            message,
-            displayName: "未知用户", // 或者 message.senderId
-            avatarUrl: "",
-            showName: true,
-          ),
-        );
+          );
+        }, loading: () {
+          // logger.d("⏳ [ChatPanel] 正在加载群友资料: ${message.senderId}");
+          return _buildMessageRow(message,
+              displayName: "...", avatarUrl: '', showName: true);
+        }, error: (e, s) {
+          logger.e("❌ [ChatPanel] 群友资料加载失败: ${message.senderId}", error: e);
+          return _buildMessageRow(message,
+              displayName: "未知用户", avatarUrl: '', showName: true);
+        });
       },
     );
   }
 
-  /// ✅ 提取出来的通用构建方法 (避免代码重复)
-  Widget _buildMessageRow(
-    ChatMessage message, {
-    required String displayName,
-    required String? avatarUrl,
-    required bool showName,
-  }) {
+  Widget _buildMessageRow(ChatMessage message,
+      {required String displayName,
+      required String? avatarUrl,
+      required bool showName}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 头像
           CustomCircleAvatar(
             avatarUrl: avatarUrl,
             radius: 18,
           ),
           const SizedBox(width: 12),
-
-          // 内容区域
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 仅在群聊显示名字
                 if (showName) ...[
                   Text(
                     displayName,
@@ -317,7 +394,6 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
                   ),
                   const SizedBox(height: 4),
                 ],
-                // 气泡
                 Container(
                   constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.5),
@@ -334,7 +410,11 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
           ),
         ],
       ),
-    );
+    )
+        .animate()
+        .fade(duration: 300.ms)
+        .moveX(begin: -30, end: 0, curve: Curves.easeOutBack)
+        .scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack);
   }
 
   Widget _buildMessageContent(ChatMessage message) {

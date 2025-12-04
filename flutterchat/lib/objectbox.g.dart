@@ -25,7 +25,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
       id: const obx_int.IdUid(1, 6522613810587745459),
       name: 'Conversation',
-      lastPropertyId: const obx_int.IdUid(8, 4336788523471131531),
+      lastPropertyId: const obx_int.IdUid(9, 2744350790565832998),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -68,6 +68,11 @@ final _entities = <obx_int.ModelEntity>[
             id: const obx_int.IdUid(8, 4336788523471131531),
             name: 'isGroup',
             type: 1,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(9, 2744350790565832998),
+            name: 'unreadCount',
+            type: 6,
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
@@ -232,7 +237,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           final nameOffset = fbb.writeString(object.name);
           final avatarOffset = fbb.writeString(object.avatar);
           final lastMessageOffset = fbb.writeString(object.lastMessage);
-          fbb.startTable(9);
+          fbb.startTable(10);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, uuidOffset);
           fbb.addOffset(2, recipientIdOffset);
@@ -241,6 +246,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fbb.addOffset(5, lastMessageOffset);
           fbb.addInt64(6, object.lastMessageAt.millisecondsSinceEpoch);
           fbb.addBool(7, object.isGroup);
+          fbb.addInt64(8, object.unreadCount);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -265,6 +271,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 16, 0));
           final isGroupParam =
               const fb.BoolReader().vTableGet(buffer, rootOffset, 18, false);
+          final unreadCountParam =
+              const fb.Int64Reader().vTableGet(buffer, rootOffset, 20, 0);
           final object = Conversation(
               id: idParam,
               uuid: uuidParam,
@@ -273,7 +281,8 @@ obx_int.ModelDefinition getObjectBoxModel() {
               avatar: avatarParam,
               lastMessage: lastMessageParam,
               lastMessageAt: lastMessageAtParam,
-              isGroup: isGroupParam);
+              isGroup: isGroupParam,
+              unreadCount: unreadCountParam);
 
           return object;
         }),
@@ -424,6 +433,10 @@ class Conversation_ {
   /// see [Conversation.isGroup]
   static final isGroup =
       obx.QueryBooleanProperty<Conversation>(_entities[0].properties[7]);
+
+  /// see [Conversation.unreadCount]
+  static final unreadCount =
+      obx.QueryIntegerProperty<Conversation>(_entities[0].properties[8]);
 }
 
 /// [ChatMessage] entity fields to define ObjectBox queries.

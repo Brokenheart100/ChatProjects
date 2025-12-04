@@ -28,7 +28,7 @@ Future<UserEntity> userProfile(UserProfileRef ref, String userId) async {
       final safeId = (u.userId.isEmpty) ? userId : u.userId;
       final safeName = (u.username.isEmpty) ? "未知用户" : u.username;
       // 即使编译器说 avatarUrl 不会是 null，我们通过 api 方法转换后确保它是 String
-      final safeAvatar = api.getFullAvatarUrl(u.avatarUrl) ?? "";
+      final safeAvatar = api.getFullAvatarUrl(u.avatarUrl);
 
       final entity = UserEntity(
         userId: safeId,

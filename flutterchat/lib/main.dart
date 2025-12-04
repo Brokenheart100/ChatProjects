@@ -1,88 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutterchat/providers/services_provider.dart';
-import 'package:flutterchat/router.dart'; // ✅ 核心：必须引入 router.dart
-import 'package:flutterchat/services/logger_service.dart';
-import 'package:flutterchat/services/objectbox_service.dart';
+import 'package:flutterchat/repositories/auth_repository.dart';
 import 'package:window_manager/window_manager.dart';
 
+// ✅ 引入 app.dart (UI 入口)
+import 'package:flutterchat/app.dart';
+
+// 引入 Service 和 Provider
+import 'package:flutterchat/services/objectbox_service.dart';
+import 'package:flutterchat/services/notification_service.dart';
+import 'package:flutterchat/services/tray_service.dart';
+import 'package:flutterchat/providers/services_provider.dart';
+
 void main() async {
+  // 1. 基础绑定初始化
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
 
-  WindowOptions windowOptions = const WindowOptions(
+  // 2. 初始化 ObjectBox 数据库
+  final objectBox = await ObjectBoxService.init();
+
+  // 3. 初始化通知服务 (flutter_local_notifications)
+  await NotificationService.init();
+
+  // 4. 初始化系统托盘 (tray_manager)
+  await TrayService().init();
+
+  // 5. 配置桌面窗口
+  const WindowOptions windowOptions = WindowOptions(
     size: Size(1024, 768),
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
+    // titleBarStyle: TitleBarStyle.hidden, // 隐藏原生标题栏，使用自定义的
     windowButtonVisibility: false,
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
+    await windowManager.setPreventClose(true);
   });
 
-  // 1. ✅ 初始化 ObjectBox (必须 await)
-  final objectBox = await ObjectBoxService.init();
-
-  // 2. ✅ 创建容器并【立即覆盖】Provider
-  // 如果你之前的代码是先创建 container 再去 override，那是不对的 (Riverpod 2.0 推荐做法)
-  // 或者如果你用了 container.updateOverrides(...) 也可以
+  // 6. Riverpod 容器初始化与依赖注入
   final container = ProviderContainer(
     overrides: [
-      // 这一行是关键！把初始化的实例注入进去
+      // 注入已初始化的数据库实例，覆盖默认的抛异常 Provider
       objectBoxProvider.overrideWithValue(objectBox),
     ],
   );
 
-  try {
-    final accountService = container.read(accountServiceProvider);
-    final account = await accountService.getAccountForAutoLogin();
+  // 7. 执行自动登录逻辑 (后台静默执行，不阻塞 UI 渲染)
+  // 注意：这里不需要 await，让它在后台跑，App 先显示登录页或 Loading
+  _performAutoLogin(container);
 
-    if (account != null) {
-      logger.i("main: 找到自动登录账户: ${account.username}");
-
-      final api = container.read(apiServiceProvider);
-      // 1. 恢复 Token
-      await api.saveToken(account.token);
-      // 2. 联网获取最新 Session
-      final user = await api.getSession();
-
-      // 3. ✅ 核心：更新 Provider 状态
-      // 一旦这里设置了 User，Router 里的 redirect 逻辑就会自动识别为"已登录"，
-      // 从而在 App 启动时直接跳转到 '/chat'
-      container.read(currentUserProvider.notifier).setUser(user);
-
-      logger.i("main: 自动登录成功！");
-    }
-  } catch (e) {
-    logger.e("自动登录失败: $e");
-    // 失败也没关系，currentUser 默认为 null，Router 会自动跳到 '/login'
-  }
-
+  // 8. 启动应用 UI
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child: const MyApp(), // ✅ 核心修改：不需要传参数了
+      child: const MyApp(), // 来自 lib/app.dart
     ),
   );
 }
 
-class MyApp extends ConsumerWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // ✅ 监听路由 Provider
-    final router = ref.watch(routerProvider);
-
-    return MaterialApp.router(
-      title: 'Flutter QQ',
-      debugShowCheckedModeBanner: false,
-
-      // ✅ 将路由配置委托给 GoRouter
-      routerConfig: router,
-    );
-  }
+Future<void> _performAutoLogin(ProviderContainer container) async {
+  // 只需要这一行！
+  // Repo 会负责：查 Account -> 恢复 Token -> 调 API -> 更新 Provider
+  await container.read(authRepositoryProvider).attemptAutoLogin();
 }

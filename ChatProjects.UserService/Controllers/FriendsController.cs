@@ -243,50 +243,39 @@ public class FriendsController(UserDbContext context, ILogger<FriendsController>
     /// <summary>
     /// 获取当前登录用户的所有好友
     /// </summary>
-    [HttpGet] // GET /api/friends
+    [HttpGet]
     public async Task<IActionResult> GetMyFriends()
     {
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (currentUserId == null) return Unauthorized();
 
-        try
-        {
-            // 1. 在 Friendships 表中查找所有包含当前用户 ID 的记录
-            var friendships = await _context.Friendships
-                .Where(f => f.User1Id == currentUserId || f.User2Id == currentUserId)
-                .ToListAsync();
+        // 1. 查关系
+        var friendships = await _context.Friendships
+            .AsNoTracking() // 优化：只读查询
+            .Where(f => f.User1Id == currentUserId || f.User2Id == currentUserId)
+            .ToListAsync();
 
-            // 2. 从这些关系中，提取出所有好友的 ID
-            var friendIds = friendships
-                .Select(f => f.User1Id == currentUserId ? f.User2Id : f.User1Id)
-                .ToList();
+        if (friendships.Count == 0) return Ok(new List<object>());
 
-            if (!friendIds.Any())
-            {
-                // 如果没有任何好友，返回一个空列表
-                return Ok(new List<UserSearchResultDto>());
-            }
+        // 2. 提取好友 ID
+        var friendIds = friendships
+            .Select(f => f.User1Id == currentUserId ? f.User2Id : f.User1Id)
+            .ToList();
 
-            // 3. 使用好友 ID 列表，去 UserProfiles 表中一次性查询出所有好友的详细信息
-            var friends = await _context.UserProfiles
-                .Where(up => friendIds.Contains(up.UserId))
-                .Select(up => new UserSearchResultDto( // 复用我们已有的 DTO
-                    up.UserId,
-                    up.UserName,
-                    up.AvatarUrl,
-                    "IsFriend" // 明确地告诉前端这些人已经是好友
-                ))
-                .ToListAsync();
+        // 3. 查详情
+        var friends = await _context.UserProfiles
+            .AsNoTracking()
+            .Where(up => friendIds.Contains(up.UserId))
+            .Select(up => new UserSearchResultDto(
+                up.UserId,
+                up.UserName,
+                up.AvatarUrl,
+                "IsFriend",
+                true
+            ))
+            .ToListAsync();
 
-            _logger.LogInformation("User {UserId} fetched {FriendCount} friends.", currentUserId, friends.Count);
-
-            return Ok(friends);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while fetching friends for user {UserId}", currentUserId);
-            return StatusCode(500, new { Message = "获取好友列表时发生内部错误。" });
-        }
+        return Ok(friends);
     }
 
 

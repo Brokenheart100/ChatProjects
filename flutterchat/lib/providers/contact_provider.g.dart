@@ -7,7 +7,7 @@ part of 'contact_provider.dart';
 // **************************************************************************
 
 String _$friendRequestCountHash() =>
-    r'3e7b5b6e5550341c3178305b6f21925d3f3404e3';
+    r'3c7dc0254917662d41cf8056ad6680982211f4eb';
 
 /// See also [friendRequestCount].
 @ProviderFor(friendRequestCount)
@@ -22,7 +22,7 @@ final friendRequestCountProvider = AutoDisposeFutureProvider<int>.internal(
 );
 
 typedef FriendRequestCountRef = AutoDisposeFutureProviderRef<int>;
-String _$contactListHash() => r'd4af7498a634fdbecee7634fa28d1646a065dc6d';
+String _$contactListHash() => r'8c308387dec2c3a403ed70aa5d2f4040bd949cb7';
 
 /// See also [contactList].
 @ProviderFor(contactList)
@@ -37,7 +37,7 @@ final contactListProvider =
 );
 
 typedef ContactListRef = AutoDisposeFutureProviderRef<List<ContactGroup>>;
-String _$expandedGroupsHash() => r'5a36a98b87b01c200a2971059a11971c5d2b5db6';
+String _$expandedGroupsHash() => r'04ebce9c63d510bd802f3c6269dd3465591a2137';
 
 /// See also [ExpandedGroups].
 @ProviderFor(ExpandedGroups)

@@ -1,6 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutterchat/repositories/auth_repository.dart';
 import 'package:go_router/go_router.dart'; // 1. 引入 GoRouter
 import 'package:flutterchat/models/saved_account.dart';
 import 'package:flutterchat/providers/services_provider.dart';
@@ -44,7 +46,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     if (_isLoading) return;
-
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       _showSnackBar('请输入用户名和密码', isError: true);
       return;
@@ -53,40 +54,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final apiService = ref.read(apiServiceProvider);
+      // ✅ 2. 核心修改：只调用 Repository
+      // 无需手动 saveToken，无需手动 updateProvider，Repository 全包了
+      final repo = ref.read(authRepositoryProvider);
 
-      final authResponse = await apiService.login(
+      await repo.login(
         username: _usernameController.text,
         password: _passwordController.text,
       );
 
-      // 更新全局状态
-      ref.read(currentUserProvider.notifier).setUser(authResponse);
-
-      final accountToSave = SavedAccount(
-        username: authResponse.username,
-        token: authResponse.token,
-        avatarUrl: authResponse.avatarUrl,
-        autoLoginEnabled: false,
-      );
-      await _accountService.saveOrUpdateAccount(accountToSave);
-
-      if (!mounted) return;
-      _passwordController.clear();
-      _usernameController.clear();
-
-      // 2. 核心修复：使用 GoRouter 跳转
-      // go('/chat') 会直接进入首页的聊天 Tab
-      context.go('/chat');
-    } catch (e, stackTrace) {
-      logger.e('登录失败！', error: e, stackTrace: stackTrace);
-      if (mounted) {
-        _showSnackBar(e.toString(), isError: true);
-      }
+      // 跳转
+      if (mounted) context.go('/chat');
+    } catch (e) {
+      // 错误处理逻辑不变
+      logger.e('登录失败', error: e);
+      if (mounted) _showSnackBar(e.toString(), isError: true);
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -123,14 +107,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               _buildMultiAccountDisplay(),
               const SizedBox(height: 15),
               _buildInputField(_usernameController, '输入Username',
-                  hasDropdown: true),
+                      hasDropdown: true)
+                  .animate(delay: 200.ms)
+                  .fadeIn()
+                  .slideX(begin: -0.2, end: 0, curve: Curves.easeOut),
               const SizedBox(height: 15),
               _buildInputField(_passwordController, '输入Password',
-                  isPassword: true),
+                      isPassword: true)
+                  .animate(delay: 400.ms) // 再延迟
+                  .fadeIn()
+                  .slideX(begin: -0.2, end: 0, curve: Curves.easeOut),
               const SizedBox(height: 20),
               _buildAgreementCheckbox(),
               const SizedBox(height: 20),
-              _buildLoginButton(),
+              _buildLoginButton().animate(delay: 600.ms).fadeIn().scale(
+                  begin: const Offset(0.5, 0.5),
+                  curve: Curves.elasticOut), // 弹性弹出
               const Spacer(),
               _buildBottomLinks(),
               const SizedBox(height: 40),

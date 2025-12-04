@@ -17,6 +17,7 @@ class Conversation {
   DateTime lastMessageAt;
 
   bool isGroup;
+  int unreadCount;
 
   Conversation({
     this.id = 0,
@@ -27,5 +28,6 @@ class Conversation {
     required this.lastMessage,
     required this.lastMessageAt,
     this.isGroup = false,
+    this.unreadCount = 0,
   });
 }

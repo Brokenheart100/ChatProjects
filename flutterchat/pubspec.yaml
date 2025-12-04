@@ -43,6 +43,9 @@ dependencies:
   objectbox: ^2.4.0 # 推荐配合 flutter_libs 使用较稳的版本，或者使用 ^4.0.3
   objectbox_flutter_libs: ^2.4.0
   image_picker: ^1.2.1
+  flutter_local_notifications: ^19.5.0
+  tray_manager: ^0.5.2
+  desktop_drop: ^0.7.0
   # 注意：ObjectBox 4.0 有重大变更，如果用 4.0，请确保 generator 也是 4.0
   # 这里为了稳妥，我们先试用最新版 4.0.3，如果报错再降级
 

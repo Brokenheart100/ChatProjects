@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/providers/conversation_provider.dart';
+import 'package:flutterchat/providers/online_status_provider.dart';
 import 'package:flutterchat/services/logger_service.dart'; // ✅ 引入 Logger
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
 import 'package:flutterchat/widgets/custom_search_field.dart';
@@ -26,15 +28,11 @@ class ConversationList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 渲染时日志 (频率较高，如果不调试可注释)
-    logger.d("📋 [ConversationList] 渲染列表，共 ${conversations.length} 个会话");
-
     return Container(
       width: 280,
       color: const Color(0xFF3D3D3D),
       child: Column(
         children: [
-          // 搜索栏
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: Row(
@@ -45,24 +43,21 @@ class ConversationList extends ConsumerWidget {
               ],
             ),
           ),
-          // 列表区域
           Expanded(
             child: ListView.builder(
               itemCount: conversations.length,
               itemBuilder: (context, index) {
                 final conversation = conversations[index];
                 final isSelected = selectedIndex == index;
-                logger.i(
-                    "👆 [ConversationList] : ${conversation.name} (ID: ${conversation.uuid}) recipientId:${conversation.recipientId}");
+
                 return GestureDetector(
                   onTap: () {
-                    logger.i(
-                        "👆 [ConversationList] 点击会话: ${conversation.name} (ID: ${conversation.uuid})");
                     onTap(index);
+                    ref
+                        .read(conversationListProvider.notifier)
+                        .markAsRead(conversation.uuid);
                   },
                   onSecondaryTapDown: (details) {
-                    logger.i(
-                        "🖱️ [ConversationList] 右键点击会话: ${conversation.name}");
                     _showContextMenu(
                         context, ref, details.globalPosition, conversation);
                   },
@@ -79,11 +74,54 @@ class ConversationList extends ConsumerWidget {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     child: Row(
                       children: [
-                        CustomCircleAvatar(
-                          avatarUrl: conversation.avatar,
-                          radius: 22,
+                        // 1. 头像 + 在线状态
+                        Stack(
+                          children: [
+                            CustomCircleAvatar(
+                              avatarUrl: conversation.avatar,
+                              radius: 22,
+                            ),
+                            if (!conversation.isGroup)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Consumer(
+                                  builder: (context, ref, child) {
+                                    final onlineUsers =
+                                        ref.watch(onlineUsersProvider);
+                                    final isOnline = onlineUsers
+                                        .contains(conversation.recipientId);
+                                    if (!conversation.isGroup) {
+                                      logger.d(
+                                          "🔍 [Status Check] 用户: ${conversation.name}, RecipientID: '${conversation.recipientId}', 在线状态: $isOnline");
+                                    }
+                                    // final isOnline = true;
+                                    // 如果不在线，就不显示红点（或者显示灰色），这里只显示在线绿点
+                                    if (!isOnline) return const SizedBox();
+
+                                    return Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF4CAF50),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isSelected
+                                              ? const Color(0xFF4A4A4A)
+                                              : const Color(0xFF3D3D3D),
+                                          width: 2,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
                         ),
+
                         const SizedBox(width: 10),
+
+                        // 2. 文字信息
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,9 +132,7 @@ class ConversationList extends ConsumerWidget {
                                     child: Text(
                                       conversation.name,
                                       style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                      ),
+                                          color: Colors.white, fontSize: 14),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -105,9 +141,7 @@ class ConversationList extends ConsumerWidget {
                                   Text(
                                     _formatTime(conversation.lastMessageAt),
                                     style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
-                                    ),
+                                        color: Colors.white54, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -122,6 +156,32 @@ class ConversationList extends ConsumerWidget {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  if (conversation.unreadCount > 0)
+                                    Container(
+                                      margin: const EdgeInsets.only(left: 8),
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFFF4433),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(
+                                        conversation.unreadCount > 99
+                                            ? '99+'
+                                            : conversation.unreadCount
+                                                .toString(),
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    )
+                                        .animate(
+                                            onPlay: (c) =>
+                                                c.repeat(reverse: true))
+                                        .scale(
+                                            begin: const Offset(1.0, 1.0),
+                                            end: const Offset(1.15, 1.15),
+                                            duration: 1000.ms),
                                 ],
                               ),
                             ],
@@ -130,7 +190,10 @@ class ConversationList extends ConsumerWidget {
                       ],
                     ),
                   ),
-                );
+                )
+                    .animate(delay: (index < 10 ? index * 50 : 0).ms) // 缩短动画时间
+                    .fadeIn(duration: 400.ms)
+                    .slideY(begin: 0.2, end: 0);
               },
             ),
           ),
@@ -158,7 +221,6 @@ class ConversationList extends ConsumerWidget {
           text: '置顶',
           onTap: () {
             logger.i("📌 [ConversationList] 点击置顶: ${conversation.name}");
-            // TODO: 实现置顶逻辑
           },
         ),
         _buildMenuItem(

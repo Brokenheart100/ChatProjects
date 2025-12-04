@@ -70,8 +70,6 @@ class ApiClient {
 
         if (e.response?.statusCode == 401) {
           logger.w("⚠️ Token 已过期或无效，需要重新登录");
-          // TODO: Step 3 时我们会在这里加入“自动跳转到登录页”的逻辑
-          // 目前先只清除本地 Token
           final prefs = await SharedPreferences.getInstance();
           await prefs.remove(_tokenKey);
         }

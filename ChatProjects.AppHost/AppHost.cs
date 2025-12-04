@@ -67,6 +67,7 @@ var orleans = builder.AddOrleans("my-orleans-cluster")
 
 var userService = builder.AddProject<Projects.ChatProjects_UserService>("userservice")
     .WithReference(rabbitmq)
+    .WithReference(cache)
     .WaitFor(rabbitmq)
     .WithReference(userdb);
 
@@ -88,7 +89,8 @@ var realtimeService = builder.AddProject<Projects.ChatProjects_RealtimeService>(
     .WithReference(rabbitmq) // <--- 关键：实时服务需要消费消息队列
     .WaitFor(rabbitmq)
     .WithEnvironment("ConnectionStrings__mqtt", mqttBroker.GetEndpoint("mqtt"))
-    .WithReference(mqttBroker.GetEndpoint("mqtt"));
+    .WithReference(mqttBroker.GetEndpoint("mqtt"))
+    .WithReference(cache);
 
 var chatHistoryDb = postgresServer.AddDatabase("chathistorydb");
 

@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddNpgsqlDbContext<UserDbContext>("userdb");
-
+builder.AddRedisClient("cache");
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["SecretKey"];
@@ -50,6 +50,7 @@ builder.Host.UseWolverine(opts =>
 
     // 2. 声明一个名为 "user-events" 的 Fanout 交换机
     opts.PublishMessage<UserRegistered>().ToRabbitExchange("user-events", e => e.ExchangeType = ExchangeType.Fanout);
+    opts.PublishMessage<UserStatusChangedEvent>().ToRabbitExchange("chat-events");
 
     // 3. 监听一个队列，并将它绑定到交换机
     opts.ListenToRabbitQueue("userservice-inbox", q =>

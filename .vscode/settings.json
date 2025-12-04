@@ -2,5 +2,6 @@
     "cmake.ignoreCMakeListsMissing": true,
     "java.project.sourcePaths": [
         "flutterchat/lib"
-    ]
+    ],
+    "java.compile.nullAnalysis.mode": "disabled"
 }

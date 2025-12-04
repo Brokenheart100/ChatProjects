@@ -4,12 +4,14 @@ class UserSearchResult {
   final String userId;
   final String username;
   final String? avatarUrl;
+  final bool isOnline;
   FriendshipStatus friendshipStatus;
 
   UserSearchResult({
     required this.userId,
     required this.username,
     this.avatarUrl,
+    this.isOnline = false,
     required this.friendshipStatus,
   });
 
@@ -30,6 +32,7 @@ class UserSearchResult {
           ? FriendshipStatusExtension.fromString(
               json['friendshipStatus'].toString())
           : FriendshipStatus.notFriend,
+      isOnline: json['isOnline'] ?? false,
     );
   }
 }

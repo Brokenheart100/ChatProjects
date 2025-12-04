@@ -3,6 +3,7 @@ import 'contact.dart'; // Import the new Contact model
 class ContactGroup {
   final String name;
   final List<Contact> contacts; // <-- Use a list of Contact objects
+  // final String? _customCountDisplay;
 
   ContactGroup({required this.name, required this.contacts});
 

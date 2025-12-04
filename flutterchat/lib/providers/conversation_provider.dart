@@ -1,9 +1,11 @@
+import 'package:flutterchat/services/notification_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/models/contact.dart';
 import 'package:flutterchat/providers/services_provider.dart';
 import 'package:flutterchat/services/logger_service.dart';
 import 'package:uuid/uuid.dart';
+import 'package:window_manager/window_manager.dart';
 
 part 'conversation_provider.g.dart';
 
@@ -159,27 +161,69 @@ class ConversationList extends _$ConversationList {
   }
 
   // 收到消息更新列表
-  void _updateOrAdd(
-      String convId, String text, String senderId, String myUserId) {
+  Future<void> _updateOrAdd(
+      String convId, String text, String senderId, String myUserId) async {
     final currentList = List<Conversation>.from(state.value ?? []);
 
     final currentIndex = ref.read(selectedConversationIndexProvider);
-    String? selectedConversationUuid;
+    String? currentOpenUuid;
     if (currentIndex >= 0 && currentIndex < currentList.length) {
-      selectedConversationUuid = currentList[currentIndex].uuid; // 记录 UUID
+      currentOpenUuid = currentList[currentIndex].uuid.trim().toLowerCase();
     }
 
-    // ✅ 修复：比对 uuid (String)
-    final index = currentList.indexWhere(
-        (c) => c.uuid.trim().toLowerCase() == convId.trim().toLowerCase());
+    final targetId = convId.trim().toLowerCase();
+
+    // --- 通知逻辑开始 ---
+    final isMe = senderId == myUserId;
+    // 检查窗口是否聚焦 (需要引入 window_manager)
+    final isFocused = await windowManager.isFocused();
+    final isCurrentOpen = targetId == currentOpenUuid;
+
+    if (!isMe && (!isCurrentOpen || !isFocused)) {
+      // ✅ 修复：定义 existingConv 变量
+      // 尝试从列表中查找当前会话，如果找不到（新会话），就构造一个临时的
+      final existingConv = currentList.firstWhere(
+        (c) => c.uuid.trim().toLowerCase() == targetId,
+        orElse: () => Conversation(
+          id: 0,
+          uuid: convId,
+          recipientId: '',
+          name: '新消息', // 默认标题
+          avatar: '',
+          lastMessage: text,
+          lastMessageAt: DateTime.now(),
+        ),
+      );
+
+      // 发送通知
+      NotificationService.show(
+        id: convId.hashCode,
+        title: existingConv.name.isEmpty ? '新消息' : existingConv.name,
+        body: text,
+        payload: convId,
+        imageUrl: existingConv.avatar,
+      );
+    }
+    // --- 通知逻辑结束 ---
+
+    // 下面是原有的列表更新逻辑
+    final index =
+        currentList.indexWhere((c) => c.uuid.trim().toLowerCase() == targetId);
 
     if (index != -1) {
       final old = currentList[index];
+
+      int newUnreadCount = old.unreadCount;
+      if (!isMe && !isCurrentOpen) {
+        newUnreadCount += 1;
+      } else if (isCurrentOpen) {
+        newUnreadCount = 0;
+      }
+
       currentList.removeAt(index);
 
-      // ✅ 修复：构造新对象
       final newConv = Conversation(
-        id: old.id, // 保持本地 ID 不变
+        id: old.id,
         uuid: old.uuid,
         recipientId: old.recipientId,
         name: old.name,
@@ -187,7 +231,11 @@ class ConversationList extends _$ConversationList {
         lastMessage: text,
         lastMessageAt: DateTime.now(),
         isGroup: old.isGroup,
+        unreadCount: newUnreadCount,
       );
+
+      final db = ref.read(objectBoxProvider);
+      db.saveConversation(newConv);
 
       currentList.insert(0, newConv);
       state = AsyncData(currentList);
@@ -196,10 +244,9 @@ class ConversationList extends _$ConversationList {
       return;
     }
 
-    // 修正选中索引
-    if (selectedConversationUuid != null) {
-      final newIndex =
-          currentList.indexWhere((c) => c.uuid == selectedConversationUuid);
+    if (currentOpenUuid != null) {
+      final newIndex = currentList
+          .indexWhere((c) => c.uuid.trim().toLowerCase() == currentOpenUuid);
       if (newIndex != -1 && newIndex != currentIndex) {
         ref.read(selectedConversationIndexProvider.notifier).set(newIndex);
       }
@@ -227,5 +274,35 @@ class ConversationList extends _$ConversationList {
 
     // 4. ✅ 关键：必须选中第 0 项，这样切换回 ChatView 时，显示的就是新群聊
     ref.read(selectedConversationIndexProvider.notifier).set(0);
+  }
+
+  void markAsRead(String conversationId) {
+    final currentList = List<Conversation>.from(state.value ?? []);
+    final index = currentList.indexWhere((c) => c.uuid == conversationId);
+
+    if (index != -1) {
+      final old = currentList[index];
+      // 如果已经读了，就不操作，避免无意义刷新
+      if (old.unreadCount == 0) return;
+
+      final updated = Conversation(
+        id: old.id,
+        uuid: old.uuid,
+        recipientId: old.recipientId,
+        name: old.name,
+        avatar: old.avatar,
+        lastMessage: old.lastMessage,
+        lastMessageAt: old.lastMessageAt,
+        isGroup: old.isGroup,
+        unreadCount: 0, // ✅ 清零
+      );
+
+      // 更新 DB 和 UI
+      final db = ref.read(objectBoxProvider);
+      db.saveConversation(updated);
+
+      currentList[index] = updated;
+      state = AsyncData(currentList);
+    }
   }
 }

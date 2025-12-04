@@ -1,6 +1,8 @@
+import 'dart:async'; // 引入 async 用于定时器
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+// ✅ 引入在线状态 Provider
 import 'package:flutterchat/providers/services_provider.dart';
 import 'package:flutterchat/widgets/left_nav_rail.dart';
 import 'package:flutterchat/widgets/title_bar.dart';
@@ -10,8 +12,8 @@ import 'package:flutterchat/services/logger_service.dart';
 // 这个 Provider 需要保留，因为 ContactView 还需要用到它来在右侧显示详情
 final selectedContactProvider = StateProvider<Contact?>((ref) => null);
 
-class HomeScreen extends ConsumerWidget {
-  // 接收 GoRouter 传来的 navigationShell
+// 1. 改为 ConsumerStatefulWidget 以支持 initState
+class HomeScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const HomeScreen({
@@ -20,10 +22,52 @@ class HomeScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  Timer? _heartbeatTimer;
+  @override
+  void initState() {
+    super.initState();
+
+    // 🧪🧪🧪 【测试代码】模拟好友上线 🧪🧪🧪
+    // 延迟 3 秒，强行把某个好友设为在线
+    // Future.delayed(const Duration(seconds: 3), () {
+    //   // ⚠️ 请把这里的 ID 换成你数据库里好友 (test2) 的真实 UserID
+    //   // 你可以在联系人列表的日志里找到这个 ID
+    //   const friendId = "abca6efd-1a66-465f-9a0b-692d0a939d06";
+
+    //   if (mounted) {
+    //     logger.i("🧪 [TEST] 模拟好友上线: $friendId");
+    //     // 强制设置在线状态
+    //     ref.read(onlineUsersProvider.notifier).setOnlineBatch([friendId]);
+    //   }
+    // });
+    // 🧪🧪🧪 测试代码结束 🧪🧪🧪
+    _reportOnline();
+
+    // 2. 启动心跳：每 30 秒上报一次在线状态
+    // (具体时间间隔取决于你后端的过期时间配置，建议设置为过期时间的一半)
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      _reportOnline();
+    });
+    Future.delayed(const Duration(seconds: 1), () {
+      ref.read(apiServiceProvider).reportOnline();
+    });
+  }
+
+  void _reportOnline() {
+    // 简单的错误捕获，防止网络断开时 crash
+    ref.read(apiServiceProvider).reportOnline().catchError((e) {
+      logger.w("心跳上报失败: $e");
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
 
-    // 防御性代码：如果未登录，显示加载或空页面（Router 的 redirect 会负责跳转）
     if (currentUser == null) {
       return const Scaffold(
         backgroundColor: Color(0xFF363636),
@@ -38,31 +82,28 @@ class HomeScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFF363636),
       body: Column(
         children: [
-          // 顶部标题栏 (全局共有)
-          CustomTitleBar(),
+          // 顶部标题栏
+          const CustomTitleBar(),
 
           Expanded(
             child: Row(
               children: [
                 // 左侧导航栏
                 LeftNavRail(
-                  // 当前选中项由 GoRouter 的 Shell 决定
-                  selectedIndex: navigationShell.currentIndex,
+                  selectedIndex: widget.navigationShell.currentIndex,
                   onDestinationSelected: (index) {
-                    // 核心：告诉 GoRouter 切换分支
-                    navigationShell.goBranch(
+                    widget.navigationShell.goBranch(
                       index,
-                      // 支持点击当前 Tab 回到初始状态
-                      initialLocation: index == navigationShell.currentIndex,
+                      initialLocation:
+                          index == widget.navigationShell.currentIndex,
                     );
                   },
                   avatarUrl: fullAvatarUrl,
-                  // 将 context 和 ref 传递给 _logout 方法
-                  onLogout: () => _logout(context, ref),
+                  onLogout: () => _logout(),
                 ),
 
-                // 右侧内容 (由 GoRouter 自动填充 ChatView 或 ContactView)
-                Expanded(child: navigationShell),
+                // 右侧内容
+                Expanded(child: widget.navigationShell),
               ],
             ),
           ),
@@ -71,8 +112,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // 登出逻辑：必须接收 context 和 ref，因为 ConsumerWidget 没有这些成员变量
-  Future<void> _logout(BuildContext context, WidgetRef ref) async {
+  Future<void> _logout() async {
     logger.i("🚪 [HomeScreen] 用户点击登出按钮");
     final confirm = await showDialog<bool>(
       context: context,
@@ -96,12 +136,7 @@ class HomeScreen extends ConsumerWidget {
 
     if (confirm == true) {
       logger.w("👋 [HomeScreen] 执行登出逻辑...");
-
-      // 1. 调用 API 注销
       await ref.read(apiServiceProvider).logout();
-
-      // 2. 清除全局用户状态
-      // Router 的 redirect 逻辑会自动检测到 currentUser 变空，并跳转到 /login
       ref.read(currentUserProvider.notifier).clear();
     }
   }

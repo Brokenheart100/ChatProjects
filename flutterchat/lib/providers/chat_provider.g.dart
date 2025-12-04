@@ -6,7 +6,7 @@ part of 'chat_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$chatHash() => r'3ed7cddc3e603e29b0d90eb7068bd73cce502e88';
+String _$chatHash() => r'04fa73378e4375084efe7386d1f883b9bb0df831';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -40,16 +40,60 @@ abstract class _$Chat
   );
 }
 
-/// See also [Chat].
+/// 聊天会话状态管理 Provider
+/// 负责单个聊天会话的消息流管理、消息发送、MQTT 监听等核心功能
+/// 【参数说明】
+/// - conversationId: 当前会话的唯一标识
+/// - recipientId: 接收方用户 ID（用于发送消息时定位目标）
+/// 【核心特性】
+/// 1. 基于仓库模式封装数据逻辑（解耦 UI 与数据层）
+/// 2. 自动同步历史消息（进入会话时触发）
+/// 3. 实时监听 MQTT 消息（仅处理当前会话）
+/// 4. 支持文本/图片消息发送（含状态管理）
+///
+/// Copied from [Chat].
 @ProviderFor(Chat)
 const chatProvider = ChatFamily();
 
-/// See also [Chat].
+/// 聊天会话状态管理 Provider
+/// 负责单个聊天会话的消息流管理、消息发送、MQTT 监听等核心功能
+/// 【参数说明】
+/// - conversationId: 当前会话的唯一标识
+/// - recipientId: 接收方用户 ID（用于发送消息时定位目标）
+/// 【核心特性】
+/// 1. 基于仓库模式封装数据逻辑（解耦 UI 与数据层）
+/// 2. 自动同步历史消息（进入会话时触发）
+/// 3. 实时监听 MQTT 消息（仅处理当前会话）
+/// 4. 支持文本/图片消息发送（含状态管理）
+///
+/// Copied from [Chat].
 class ChatFamily extends Family<AsyncValue<List<ChatMessage>>> {
-  /// See also [Chat].
+  /// 聊天会话状态管理 Provider
+  /// 负责单个聊天会话的消息流管理、消息发送、MQTT 监听等核心功能
+  /// 【参数说明】
+  /// - conversationId: 当前会话的唯一标识
+  /// - recipientId: 接收方用户 ID（用于发送消息时定位目标）
+  /// 【核心特性】
+  /// 1. 基于仓库模式封装数据逻辑（解耦 UI 与数据层）
+  /// 2. 自动同步历史消息（进入会话时触发）
+  /// 3. 实时监听 MQTT 消息（仅处理当前会话）
+  /// 4. 支持文本/图片消息发送（含状态管理）
+  ///
+  /// Copied from [Chat].
   const ChatFamily();
 
-  /// See also [Chat].
+  /// 聊天会话状态管理 Provider
+  /// 负责单个聊天会话的消息流管理、消息发送、MQTT 监听等核心功能
+  /// 【参数说明】
+  /// - conversationId: 当前会话的唯一标识
+  /// - recipientId: 接收方用户 ID（用于发送消息时定位目标）
+  /// 【核心特性】
+  /// 1. 基于仓库模式封装数据逻辑（解耦 UI 与数据层）
+  /// 2. 自动同步历史消息（进入会话时触发）
+  /// 3. 实时监听 MQTT 消息（仅处理当前会话）
+  /// 4. 支持文本/图片消息发送（含状态管理）
+  ///
+  /// Copied from [Chat].
   ChatProvider call(
     String conversationId,
     String recipientId,
@@ -85,10 +129,32 @@ class ChatFamily extends Family<AsyncValue<List<ChatMessage>>> {
   String? get name => r'chatProvider';
 }
 
-/// See also [Chat].
+/// 聊天会话状态管理 Provider
+/// 负责单个聊天会话的消息流管理、消息发送、MQTT 监听等核心功能
+/// 【参数说明】
+/// - conversationId: 当前会话的唯一标识
+/// - recipientId: 接收方用户 ID（用于发送消息时定位目标）
+/// 【核心特性】
+/// 1. 基于仓库模式封装数据逻辑（解耦 UI 与数据层）
+/// 2. 自动同步历史消息（进入会话时触发）
+/// 3. 实时监听 MQTT 消息（仅处理当前会话）
+/// 4. 支持文本/图片消息发送（含状态管理）
+///
+/// Copied from [Chat].
 class ChatProvider
     extends AutoDisposeStreamNotifierProviderImpl<Chat, List<ChatMessage>> {
-  /// See also [Chat].
+  /// 聊天会话状态管理 Provider
+  /// 负责单个聊天会话的消息流管理、消息发送、MQTT 监听等核心功能
+  /// 【参数说明】
+  /// - conversationId: 当前会话的唯一标识
+  /// - recipientId: 接收方用户 ID（用于发送消息时定位目标）
+  /// 【核心特性】
+  /// 1. 基于仓库模式封装数据逻辑（解耦 UI 与数据层）
+  /// 2. 自动同步历史消息（进入会话时触发）
+  /// 3. 实时监听 MQTT 消息（仅处理当前会话）
+  /// 4. 支持文本/图片消息发送（含状态管理）
+  ///
+  /// Copied from [Chat].
   ChatProvider(
     String conversationId,
     String recipientId,

@@ -75,7 +75,9 @@ public class SearchController : ControllerBase
                 u.Id,
                 u.UserName,
                 u.AvatarUrl,
-                "NotFriend" // 这里的逻辑需要完善，需要查询关系表
+                "NotFriend", // 这里的逻辑需要完善，需要查询关系表
+               true
+                
             ))
             .ToListAsync();
 

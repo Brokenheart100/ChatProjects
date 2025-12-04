@@ -2,8 +2,28 @@ import 'package:dio/dio.dart';
 import 'package:flutterchat/models/friend_request.dart';
 import 'package:flutterchat/models/user_search_result.dart';
 import 'package:flutterchat/services/api/api_base.dart';
+import 'package:flutterchat/services/logger_service.dart';
 
 mixin ContactApi on ApiBase {
+  Future<Map<String, bool>> getOnlineStatusBatch(List<String> userIds) async {
+    try {
+      // 调用后端接口 (注意：需要确保 Gateway 配置了 /gateway/status 的转发)
+      final response = await dio.post(
+        '/gateway/status/batch-check',
+        data: userIds,
+      );
+
+      // 后端返回的是 JSON 对象 { "userId1": true, "userId2": false }
+      // 我们需要将其转换为 Dart 的 Map<String, bool>
+      final Map<String, dynamic> data = response.data;
+      return data.map((key, value) => MapEntry(key, value as bool));
+    } on DioException catch (e) {
+      // 获取状态失败不应该阻断 App 运行，记录日志并返回空 Map 即可
+      logger.e("获取在线状态失败", error: e);
+      return {};
+    }
+  }
+
   Future<List<UserSearchResult>> searchUsers(String query) async {
     try {
       final response = await dio.get(
@@ -70,34 +90,6 @@ mixin ContactApi on ApiBase {
       throw "User not found: $userId";
     } on DioException catch (e) {
       throw handleError(e, 'getUserProfile');
-    }
-  }
-
-  Future<void> kickGroupMember(
-      {required String groupId, required String userId}) async {
-    try {
-      await dio.post('/gateway/groups/$groupId/kick', data: {'userId': userId});
-    } on DioException catch (e) {
-      throw handleError(e, 'kickGroupMember');
-    }
-  }
-
-  Future<List<UserSearchResult>> getGroupMembers(String groupId) async {
-    try {
-      final response = await dio.get('/gateway/groups/$groupId/members');
-      return (response.data as List)
-          .map((json) => UserSearchResult.fromJson(json))
-          .toList();
-    } on DioException catch (e) {
-      throw handleError(e, 'getGroupMembers');
-    }
-  }
-
-  Future<void> leaveGroup(String groupId) async {
-    try {
-      await dio.post('/gateway/groups/$groupId/leave');
-    } on DioException catch (e) {
-      throw handleError(e, 'leaveGroup');
     }
   }
 

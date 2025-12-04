@@ -24,6 +24,7 @@ mixin ChatApi on ApiBase {
               ? DateTime.parse(json['lastMessageAt'])
               : DateTime.now(),
           isGroup: json['type'] == 1,
+          unreadCount: json['unreadCount'] ?? 0,
         );
       }).toList();
     } on DioException catch (e) {
@@ -66,7 +67,7 @@ mixin ChatApi on ApiBase {
     }
   }
 
-  /// ✅ 核心修复：发送消息 (必须返回 Future<String>)
+  /// ✅ 核心修复：发送消息
   /// 返回值是后端真实的 ConversationId (可能与前端生成的不同)
   Future<String> sendMessage(String conversationId, String content,
       {int contentType = 0, String? recipientId}) async {
@@ -81,8 +82,13 @@ mixin ChatApi on ApiBase {
         },
       );
 
-      // 解析并返回真实 ID
+      // ❌ 错误写法 (可能你写成了这样)：
+      // return response.data; // 这会返回 Map
+
+      // ✅ 正确写法：提取 ID
       final realId = response.data['realConversationId']?.toString();
+
+      // 返回 ID 字符串
       return realId ?? conversationId;
     } on DioException catch (e) {
       throw handleError(e, 'sendMessage');

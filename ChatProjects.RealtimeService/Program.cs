@@ -13,7 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.Services.AddHostedService<MqttBrokerConnection>();
-
+builder.AddRedisClient("cache");
+builder.Services.AddSingleton<UserStatusService>();
 
 builder.Services.AddSingleton<IManagedMqttClient>(sp =>
 {
@@ -106,7 +107,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
