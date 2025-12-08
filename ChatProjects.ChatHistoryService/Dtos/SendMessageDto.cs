@@ -13,4 +13,5 @@ public class SendMessageDto
 
     public int ContentType { get; set; } = 0;
     public string? RecipientId { get; set; }
+    public string? LocalId { get; set; }
 }

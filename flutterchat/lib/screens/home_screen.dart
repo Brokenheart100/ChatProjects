@@ -31,25 +31,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
 
-    // 🧪🧪🧪 【测试代码】模拟好友上线 🧪🧪🧪
-    // 延迟 3 秒，强行把某个好友设为在线
-    // Future.delayed(const Duration(seconds: 3), () {
-    //   // ⚠️ 请把这里的 ID 换成你数据库里好友 (test2) 的真实 UserID
-    //   // 你可以在联系人列表的日志里找到这个 ID
-    //   const friendId = "abca6efd-1a66-465f-9a0b-692d0a939d06";
-
-    //   if (mounted) {
-    //     logger.i("🧪 [TEST] 模拟好友上线: $friendId");
-    //     // 强制设置在线状态
-    //     ref.read(onlineUsersProvider.notifier).setOnlineBatch([friendId]);
-    //   }
-    // });
-    // 🧪🧪🧪 测试代码结束 🧪🧪🧪
     _reportOnline();
 
     // 2. 启动心跳：每 30 秒上报一次在线状态
     // (具体时间间隔取决于你后端的过期时间配置，建议设置为过期时间的一半)
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       _reportOnline();
     });
     Future.delayed(const Duration(seconds: 1), () {
@@ -58,6 +48,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _reportOnline() {
+    if (!mounted) return;
     // 简单的错误捕获，防止网络断开时 crash
     ref.read(apiServiceProvider).reportOnline().catchError((e) {
       logger.w("心跳上报失败: $e");

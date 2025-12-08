@@ -4,6 +4,16 @@ import 'package:flutterchat/models/conversation.dart';
 import 'package:flutterchat/services/api/api_base.dart';
 import 'package:flutterchat/services/logger_service.dart';
 
+class SendMessageResponse {
+  final String realConversationId;
+  final String backendMessageId; // 后端生成的 Snowflake ID
+
+  SendMessageResponse({
+    required this.realConversationId,
+    required this.backendMessageId,
+  });
+}
+
 mixin ChatApi on ApiBase {
   /// 获取会话列表
   Future<List<Conversation>> getConversations(
@@ -13,6 +23,8 @@ mixin ChatApi on ApiBase {
       final List<dynamic> data = response.data;
 
       return data.map((json) {
+        logger.d(
+            "🔍 [API Debug] ID: ${json['id']}, Avatar: ${json['avatar']}"); // 打印看看后端返了什么
         return Conversation(
           id: 0,
           uuid: json['id'].toString(),
@@ -44,9 +56,13 @@ mixin ChatApi on ApiBase {
       final List<dynamic> data = response.data;
       return data.map((json) {
         final senderId = json['senderId'].toString();
+        final backendId = json['id'].toString();
+        final clientMsgId = json['clientMessageId']?.toString();
+
         return ChatMessage(
           id: 0,
-          uuid: json['id']?.toString() ?? '',
+          uuid: backendId,
+          // uuid: json['id']?.toString() ?? '',
           conversationId: conversationId,
           senderId: senderId,
           text: json['content'],
@@ -57,6 +73,7 @@ mixin ChatApi on ApiBase {
               ? DateTime.parse(json['sentAt'])
               : DateTime.now(),
           status: 1,
+          clientMessageId: json['clientMessageId']?.toString(),
         );
       }).toList();
     } on DioException catch (e) {
@@ -69,8 +86,13 @@ mixin ChatApi on ApiBase {
 
   /// ✅ 核心修复：发送消息
   /// 返回值是后端真实的 ConversationId (可能与前端生成的不同)
-  Future<String> sendMessage(String conversationId, String content,
-      {int contentType = 0, String? recipientId}) async {
+  Future<SendMessageResponse> sendMessage(
+    String conversationId,
+    String content, {
+    int contentType = 0,
+    String? recipientId,
+    required String localId, // 👈 新增：必须传入前端生成的 UUID
+  }) async {
     try {
       final response = await dio.post(
         '/gateway/messages',
@@ -79,34 +101,23 @@ mixin ChatApi on ApiBase {
           'content': content,
           'contentType': contentType,
           'recipientId': recipientId,
+          'localId': localId, // 👈 传给后端存入 ClientMessageId 字段
         },
       );
 
-      // ❌ 错误写法 (可能你写成了这样)：
-      // return response.data; // 这会返回 Map
+      final data = response.data;
 
-      // ✅ 正确写法：提取 ID
-      final realId = response.data['realConversationId']?.toString();
+      // 解析后端返回的数据
+      // C# Controller 返回结构: { "Message": { "id": 123... }, "RealConversationId": "..." }
+      final realId = data['realConversationId']?.toString() ?? conversationId;
+      final msgId = data['message']['id'].toString(); // 👈 拿到后端的 Snowflake ID
 
-      // 返回 ID 字符串
-      return realId ?? conversationId;
+      return SendMessageResponse(
+        realConversationId: realId,
+        backendMessageId: msgId,
+      );
     } on DioException catch (e) {
       throw handleError(e, 'sendMessage');
-    }
-  }
-
-  /// 创建群聊
-  Future<void> createGroup(
-      String id, String groupName, List<String> memberIds) async {
-    try {
-      await dio.post('/gateway/groups', data: {
-        'id': id,
-        'groupName': groupName,
-        'memberIds': memberIds,
-      });
-      logger.i("✅ API调用成功: 群聊已创建 (ID: $id)");
-    } on DioException catch (e) {
-      throw handleError(e, 'createGroup');
     }
   }
 }

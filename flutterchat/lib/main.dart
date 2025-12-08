@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutterchat/repositories/auth_repository.dart';
 import 'package:window_manager/window_manager.dart';
-
-// ✅ 引入 app.dart (UI 入口)
 import 'package:flutterchat/app.dart';
-
-// 引入 Service 和 Provider
 import 'package:flutterchat/services/objectbox_service.dart';
 import 'package:flutterchat/services/notification_service.dart';
 import 'package:flutterchat/services/tray_service.dart';
@@ -32,7 +28,6 @@ void main() async {
     center: true,
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
-    // titleBarStyle: TitleBarStyle.hidden, // 隐藏原生标题栏，使用自定义的
     windowButtonVisibility: false,
   );
 

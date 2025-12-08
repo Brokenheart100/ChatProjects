@@ -16,13 +16,21 @@ mixin GroupApi on ApiBase {
 
   /// 创建群聊
   /// [id]: 前端生成的 UUID
-  Future<void> createGroup(
-      String id, String groupName, List<String> memberIds) async {
+  Future<void> createGroup({
+    required String id,
+    required String groupName,
+    required List<String> memberIds,
+    String? avatarUrl, // ✅ 新增参数
+  }) async {
     try {
       await dio.post('/gateway/groups', data: {
         'id': id,
         'groupName': groupName,
         'memberIds': memberIds,
+        // 🛑 核心修复：
+        // 之前是 'avatar': avatarUrl
+        // 现在改为 'avatarUrl'，以匹配 C# 后端 CreateGroupDto 中的 AvatarUrl 属性
+        'avatarUrl': avatarUrl,
       });
       logger.i("✅ API调用成功: 群聊已创建 (ID: $id)");
     } on DioException catch (e) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutterchat/providers/chat_ui_provider.dart';
 import 'package:flutterchat/providers/user_profile_provider.dart';
 import 'package:flutterchat/services/logger_service.dart'; // ✅ 引入 Logger
 import 'package:flutterchat/widgets/custom_circle_avatar.dart';
@@ -11,6 +12,7 @@ import 'package:flutterchat/providers/chat_provider.dart';
 import 'package:flutterchat/providers/services_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:flutterchat/widgets/group_right_panel.dart'; // 引入刚才创建的组件
 
 class ChatPanel extends ConsumerStatefulWidget {
   final Conversation conversation;
@@ -105,7 +107,9 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
     final currentUserId = currentUser?.userId ?? '';
-
+    final showSidebar = ref.watch(showGroupSidebarProvider);
+    // 判断是否是群聊
+    final isGroup = widget.conversation.isGroup;
     final chatAsyncValue = ref.watch(chatProvider(
         widget.conversation.uuid, widget.conversation.recipientId));
 
@@ -138,39 +142,61 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
       child: Stack(
         children: [
           // 原有内容
-          Container(
-            color: const Color(0xFF333333),
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: chatAsyncValue.when(
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (err, stack) => Center(
-                        child: Text('加载失败: $err',
-                            style: const TextStyle(color: Colors.white54))),
-                    data: (messages) {
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 20),
-                        reverse: true,
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          final message = messages[index];
-                          final isMe = message.senderId.toLowerCase() ==
-                              currentUserId.toLowerCase();
-                          return isMe
-                              ? _buildMyMessage(message)
-                              : _buildOthersMessage(message);
-                        },
-                      );
-                    },
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  color: const Color(0xFF333333),
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+                      Expanded(
+                        child: chatAsyncValue.when(
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
+                          error: (err, stack) => Center(
+                              child: Text('加载失败: $err',
+                                  style:
+                                      const TextStyle(color: Colors.white54))),
+                          data: (messages) {
+                            return ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 20),
+                              reverse: true,
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                final message = messages[index];
+                                final isMe = message.senderId.toLowerCase() ==
+                                    currentUserId.toLowerCase();
+                                return isMe
+                                    ? _buildMyMessage(message)
+                                    : _buildOthersMessage(message);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      _buildInputArea(),
+                    ],
                   ),
                 ),
-                _buildInputArea(),
-              ],
-            ),
+              ),
+              if (isGroup)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  width: showSidebar ? 240 : 0, // 通过宽度控制折叠
+                  child: ClipRect(
+                    // 防止内容溢出
+                    child: OverflowBox(
+                      minWidth: 0,
+                      maxWidth: 240,
+                      alignment: Alignment.topLeft,
+                      child: GroupRightPanel(groupId: widget.conversation.uuid),
+                    ),
+                  ),
+                ),
+            ],
           ),
 
           // ✅ 5. 拖拽时的覆盖层 (Overlay)
@@ -203,6 +229,10 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   }
 
   Widget _buildHeader() {
+    // 获取侧边栏开关状态
+    final showSidebar = ref.watch(showGroupSidebarProvider);
+    // 判断是否是群聊
+    final isGroup = widget.conversation.isGroup;
     return Container(
       height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -215,25 +245,48 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
             widget.conversation.name,
             style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
+          if (isGroup) ...[
+            const SizedBox(width: 8),
+            Text("(${widget.conversation.id})", // 这里可以显示人数，需从GroupDetail获取
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          ],
           const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.white70, size: 20),
+            tooltip: "搜索历史消息",
+            onPressed: () {
+              // 跳转到搜索页，传递当前会话ID
+              // 注意：你需要把 SearchPage 注册到 router.dart 中
+              context
+                  .push('/search?conversationId=${widget.conversation.uuid}');
+            },
+          ),
+          const SizedBox(width: 16),
           const Icon(Icons.call, color: Colors.white70, size: 20),
           const SizedBox(width: 16),
           const Icon(Icons.videocam, color: Colors.white70, size: 20),
           const SizedBox(width: 16),
-          IconButton(
-            icon: const Icon(Icons.more_horiz),
-            onPressed: () {
-              logger.i(
-                  "⚙️ [ChatPanel] 点击设置按钮 (IsGroup: ${widget.conversation.isGroup})");
-              if (widget.conversation.isGroup) {
-                context
-                    .push('/chat/group-settings/${widget.conversation.uuid}');
-              } else {
+          if (isGroup)
+            IconButton(
+              icon: Icon(
+                showSidebar ? Icons.last_page : Icons.first_page, // 图标随状态变化
+                color: showSidebar ? const Color(0xFF6584FE) : Colors.white70,
+              ),
+              tooltip: "群成员/公告",
+              onPressed: () {
+                // 切换状态
+                ref.read(showGroupSidebarProvider.notifier).state =
+                    !showSidebar;
+              },
+            ),
+          if (!isGroup) // 私聊保持原来的更多按钮
+            IconButton(
+              icon: const Icon(Icons.more_horiz),
+              onPressed: () {
                 context.push(
                     '/chat/user-profile/${widget.conversation.recipientId}');
-              }
-            },
-          ),
+              },
+            ),
         ],
       ),
     );
@@ -330,9 +383,11 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
   Widget _buildOthersMessage(ChatMessage message) {
     // 1. 私聊场景
     if (!widget.conversation.isGroup) {
-      final displayAvatar = message.avatar.isNotEmpty
-          ? message.avatar
-          : widget.conversation.avatar;
+      final bool hasAvatar =
+          message.avatar != null && message.avatar!.isNotEmpty;
+
+      final displayAvatar =
+          hasAvatar ? message.avatar : widget.conversation.avatar;
 
       return _buildMessageRow(
         message,
@@ -349,7 +404,8 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
 
         return userAsync.when(data: (user) {
           // 🔍 调试日志：打印渲染信息
-          // logger.d("👤 [ChatPanel] 渲染群友: ${user.username} (ID: ${user.userId})");
+          logger
+              .d("👤 [ChatPanel] 渲染群友: ${user.username} (ID: ${user.userId})");
           return _buildMessageRow(
             message,
             displayName: user.username,
@@ -357,7 +413,7 @@ class _ChatPanelState extends ConsumerState<ChatPanel> {
             showName: true,
           );
         }, loading: () {
-          // logger.d("⏳ [ChatPanel] 正在加载群友资料: ${message.senderId}");
+          logger.d("⏳ [ChatPanel] 正在加载群友资料: ${message.senderId}");
           return _buildMessageRow(message,
               displayName: "...", avatarUrl: '', showName: true);
         }, error: (e, s) {

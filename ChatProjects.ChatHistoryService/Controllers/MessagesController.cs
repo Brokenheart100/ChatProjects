@@ -142,7 +142,8 @@ public class MessagesController : ControllerBase
                     SenderId = currentUserId,
                     Content = dto.Content,
                     ContentType = dto.ContentType,
-                    SentAt = now
+                    SentAt = now,
+                    ClientMessageId = dto.LocalId
                 };
 
                 _context.Messages.Add(message);
@@ -151,7 +152,7 @@ public class MessagesController : ControllerBase
                 // ---------------------------------------------------------
                 // 3. 更新会话快照
                 // ---------------------------------------------------------
-
+                //wget https://mirrors.aliyun.com/qt/official_releases/online_installers/qt-unified-linux-x64-online.run
                 if (!isNewConversation)
                 {
                     _logger.LogInformation("🔄 [SendMessage] 使用 ExecuteUpdateAsync 更新现有会话快照...");

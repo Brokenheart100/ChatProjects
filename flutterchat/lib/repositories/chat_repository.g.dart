@@ -8,11 +8,7 @@ part of 'chat_repository.dart';
 
 String _$chatRepositoryHash() => r'e61e3393a57cbdeb6e55888f2d358474cf307489';
 
-/// 聊天数据仓库 Provider
-/// 提供全局单例的聊天仓库实例，封装聊天相关的所有数据操作（本地数据库 + 远程 API）
-/// keepAlive: true 确保仓库实例全局复用，避免频繁创建销毁，提高性能
-///
-/// Copied from [chatRepository].
+/// See also [chatRepository].
 @ProviderFor(chatRepository)
 final chatRepositoryProvider = Provider<ChatRepository>.internal(
   chatRepository,

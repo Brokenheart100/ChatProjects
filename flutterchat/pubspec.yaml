@@ -46,6 +46,7 @@ dependencies:
   flutter_local_notifications: ^19.5.0
   tray_manager: ^0.5.2
   desktop_drop: ^0.7.0
+  intl: ^0.20.2
   # 注意：ObjectBox 4.0 有重大变更，如果用 4.0，请确保 generator 也是 4.0
   # 这里为了稳妥，我们先试用最新版 4.0.3，如果报错再降级
 

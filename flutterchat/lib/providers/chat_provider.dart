@@ -28,14 +28,22 @@ class Chat extends _$Chat {
     final chatRepo = ref.watch(chatRepositoryProvider);
     // 获取当前登录用户信息（未登录则返回空流）
     final currentUser = ref.read(currentUserProvider);
-
+    final api = ref.read(apiServiceProvider);
     // 未登录状态：返回空流，避免后续逻辑报错
     if (currentUser == null) return const Stream.empty();
 
     // 1. 同步历史消息（异步执行，不阻塞 UI 渲染）
     // 调用仓库的同步方法，从远程 API 拉取历史消息到本地数据库
+
+    // 2. 准备头像参数
+    final myAvatarUrl = api.getFullAvatarUrl(currentUser.avatarUrl);
+
+    // 3. ✅ 修复：传入 currentUserAvatar
     chatRepo.syncHistory(
-        conversationId: conversationId, currentUserId: currentUser.userId);
+      conversationId: conversationId,
+      currentUserId: currentUser.userId,
+      currentUserAvatar: myAvatarUrl,
+    );
 
     // 2. 启动 MQTT 实时消息监听（仅处理当前会话的消息）
     // 传入会话 ID、当前用户 ID 和仓库实例，用于消息过滤和保存

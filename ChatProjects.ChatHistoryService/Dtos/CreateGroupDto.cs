@@ -11,4 +11,5 @@ public class CreateGroupDto
     // 初始成员 ID 列表
     [Required]
     public List<string> MemberIds { get; set; } = new();
+    public string? AvatarUrl { get; set; }
 }

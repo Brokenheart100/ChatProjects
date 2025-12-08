@@ -80,7 +80,7 @@ final _entities = <obx_int.ModelEntity>[
   obx_int.ModelEntity(
       id: const obx_int.IdUid(2, 2555789845053409850),
       name: 'ChatMessage',
-      lastPropertyId: const obx_int.IdUid(10, 3817957014483886633),
+      lastPropertyId: const obx_int.IdUid(11, 3482922010449322525),
       flags: 0,
       properties: <obx_int.ModelProperty>[
         obx_int.ModelProperty(
@@ -98,8 +98,7 @@ final _entities = <obx_int.ModelEntity>[
             id: const obx_int.IdUid(3, 1994706683563609198),
             name: 'conversationId',
             type: 9,
-            flags: 2048,
-            indexId: const obx_int.IdUid(3, 4078276390187838145)),
+            flags: 0),
         obx_int.ModelProperty(
             id: const obx_int.IdUid(4, 508078200180549323),
             name: 'senderId',
@@ -134,6 +133,11 @@ final _entities = <obx_int.ModelEntity>[
             id: const obx_int.IdUid(10, 3817957014483886633),
             name: 'status',
             type: 6,
+            flags: 0),
+        obx_int.ModelProperty(
+            id: const obx_int.IdUid(11, 3482922010449322525),
+            name: 'clientMessageId',
+            type: 9,
             flags: 0)
       ],
       relations: <obx_int.ModelRelation>[],
@@ -215,7 +219,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
       lastRelationId: const obx_int.IdUid(0, 0),
       lastSequenceId: const obx_int.IdUid(0, 0),
       retiredEntityUids: const [],
-      retiredIndexUids: const [],
+      retiredIndexUids: const [4078276390187838145],
       retiredPropertyUids: const [],
       retiredRelationUids: const [],
       modelVersion: 5,
@@ -299,8 +303,12 @@ obx_int.ModelDefinition getObjectBoxModel() {
           final conversationIdOffset = fbb.writeString(object.conversationId);
           final senderIdOffset = fbb.writeString(object.senderId);
           final textOffset = fbb.writeString(object.text);
-          final avatarOffset = fbb.writeString(object.avatar);
-          fbb.startTable(11);
+          final avatarOffset =
+              object.avatar == null ? null : fbb.writeString(object.avatar!);
+          final clientMessageIdOffset = object.clientMessageId == null
+              ? null
+              : fbb.writeString(object.clientMessageId!);
+          fbb.startTable(12);
           fbb.addInt64(0, object.id);
           fbb.addOffset(1, uuidOffset);
           fbb.addOffset(2, conversationIdOffset);
@@ -311,6 +319,7 @@ obx_int.ModelDefinition getObjectBoxModel() {
           fbb.addOffset(7, avatarOffset);
           fbb.addInt64(8, object.sentAt.millisecondsSinceEpoch);
           fbb.addInt64(9, object.status);
+          fbb.addOffset(10, clientMessageIdOffset);
           fbb.finish(fbb.endTable());
           return object.id;
         },
@@ -328,27 +337,31 @@ obx_int.ModelDefinition getObjectBoxModel() {
               .vTableGet(buffer, rootOffset, 10, '');
           final textParam = const fb.StringReader(asciiOptimization: true)
               .vTableGet(buffer, rootOffset, 12, '');
-          final isMeParam =
-              const fb.BoolReader().vTableGet(buffer, rootOffset, 14, false);
           final contentTypeParam =
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 16, 0);
+          final isMeParam =
+              const fb.BoolReader().vTableGet(buffer, rootOffset, 14, false);
           final avatarParam = const fb.StringReader(asciiOptimization: true)
-              .vTableGet(buffer, rootOffset, 18, '');
+              .vTableGetNullable(buffer, rootOffset, 18);
           final sentAtParam = DateTime.fromMillisecondsSinceEpoch(
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 20, 0));
           final statusParam =
               const fb.Int64Reader().vTableGet(buffer, rootOffset, 22, 0);
+          final clientMessageIdParam =
+              const fb.StringReader(asciiOptimization: true)
+                  .vTableGetNullable(buffer, rootOffset, 24);
           final object = ChatMessage(
               id: idParam,
               uuid: uuidParam,
               conversationId: conversationIdParam,
               senderId: senderIdParam,
               text: textParam,
-              isMe: isMeParam,
               contentType: contentTypeParam,
+              isMe: isMeParam,
               avatar: avatarParam,
               sentAt: sentAtParam,
-              status: statusParam);
+              status: statusParam,
+              clientMessageId: clientMessageIdParam);
 
           return object;
         }),
@@ -480,6 +493,10 @@ class ChatMessage_ {
   /// see [ChatMessage.status]
   static final status =
       obx.QueryIntegerProperty<ChatMessage>(_entities[1].properties[9]);
+
+  /// see [ChatMessage.clientMessageId]
+  static final clientMessageId =
+      obx.QueryStringProperty<ChatMessage>(_entities[1].properties[10]);
 }
 
 /// [UserEntity] entity fields to define ObjectBox queries.

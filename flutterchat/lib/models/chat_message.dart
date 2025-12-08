@@ -3,24 +3,26 @@ import 'package:objectbox/objectbox.dart';
 @Entity()
 class ChatMessage {
   @Id()
-  int id;
+  int id = 0;
 
   @Unique(onConflict: ConflictStrategy.replace)
   String uuid;
 
-  @Index()
   String conversationId;
-
   String senderId;
   String text;
-  bool isMe;
   int contentType;
-  String avatar;
+  bool isMe;
+  String? avatar;
 
   @Property(type: PropertyType.date)
   DateTime sentAt;
 
-  int status;
+  int status; // 0: sending, 1: sent, 2: failed
+
+  // ✅ 新增：用于同步时暂存后端返回的 clientMessageId
+  // 不需要加索引，因为它主要用于从 API 映射回来
+  String? clientMessageId;
 
   ChatMessage({
     this.id = 0,
@@ -28,25 +30,27 @@ class ChatMessage {
     required this.conversationId,
     required this.senderId,
     required this.text,
-    required this.isMe,
     this.contentType = 0,
-    required this.avatar,
+    required this.isMe,
+    this.avatar,
     required this.sentAt,
     this.status = 1,
+    this.clientMessageId, // ✅ 加入构造函数
   });
 
-  // ✅ 核心修复：确保这里包含了 conversationId
+  // 用于复制对象的辅助方法 (如果你用了 Freezed，这里会自动生成，如果是手写，建议加上)
   ChatMessage copyWith({
     int? id,
     String? uuid,
-    String? conversationId, // <--- 之前可能缺了这个
+    String? conversationId,
     String? senderId,
     String? text,
-    bool? isMe,
     int? contentType,
+    bool? isMe,
     String? avatar,
     DateTime? sentAt,
     int? status,
+    String? clientMessageId,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -54,30 +58,12 @@ class ChatMessage {
       conversationId: conversationId ?? this.conversationId,
       senderId: senderId ?? this.senderId,
       text: text ?? this.text,
-      isMe: isMe ?? this.isMe,
       contentType: contentType ?? this.contentType,
+      isMe: isMe ?? this.isMe,
       avatar: avatar ?? this.avatar,
       sentAt: sentAt ?? this.sentAt,
       status: status ?? this.status,
-    );
-  }
-
-  factory ChatMessage.fromJson(Map<String, dynamic> json,
-      {required String currentUserId}) {
-    final senderId = json['senderId'].toString();
-    return ChatMessage(
-      id: 0,
-      uuid: json['id']?.toString() ?? '',
-      conversationId: json['conversationId']?.toString() ?? '',
-      senderId: senderId,
-      text: json['content'] ?? '',
-      contentType: json['contentType'] ?? 0,
-      isMe: senderId.toLowerCase() == currentUserId.toLowerCase(),
-      avatar: '',
-      sentAt: json['sentAt'] != null
-          ? DateTime.parse(json['sentAt'])
-          : DateTime.now(),
-      status: 1,
+      clientMessageId: clientMessageId ?? this.clientMessageId,
     );
   }
 }

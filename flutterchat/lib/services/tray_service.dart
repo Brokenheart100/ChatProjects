@@ -29,15 +29,38 @@ class TrayService with TrayListener {
     // 4. 创建右键菜单
     Menu menu = Menu(
       items: [
+        // --- 状态区 ---
+        MenuItem(key: 'status_online', label: '🟢  我在线上'),
+        MenuItem(key: 'status_qme', label: '🟡  Q我吧'),
+        MenuItem(key: 'status_away', label: '🌙  离开'),
+        MenuItem(key: 'status_busy', label: '⛔  忙碌'),
+        MenuItem(key: 'status_dnd', label: '🚫  请勿打扰'),
+        MenuItem(key: 'status_hidden', label: '🕵️  隐身'), // 或者 👻
+        MenuItem(key: 'status_offline', label: '⚫  离线'),
+
+        MenuItem.separator(), // --- 分割线 ---
+
+        // --- 设置区 ---
         MenuItem(
-          key: 'show_window',
-          label: '显示/隐藏',
+          key: 'toggle_sound',
+          label: '🔊  打开所有声音',
+          checked: true, // 勾选状态
         ),
-        MenuItem.separator(),
-        MenuItem(
-          key: 'exit_app',
-          label: '退出',
-        ),
+        MenuItem(key: 'toggle_blink', label: '😐  关闭头像闪动'),
+
+        MenuItem.separator(), // --- 分割线 ---
+
+        // --- 功能区 ---
+        // 原生菜单无法右对齐快捷键，只能写在文字里
+        MenuItem(key: 'action_lock', label: '🔒  锁定 (Ctrl+Alt+L)'),
+        MenuItem(key: 'action_screenshot', label: '✂️  截图 (Ctrl+Alt+A)'),
+        MenuItem(key: 'action_transfer', label: '⚡  QQ闪传'),
+
+        MenuItem.separator(), // --- 分割线 ---
+
+        // --- 核心操作 ---
+        MenuItem(key: 'show_window', label: '🪟  打开主面板'),
+        MenuItem(key: 'exit_app', label: '🚪  退出'),
       ],
     );
     await trayManager.setContextMenu(menu);
@@ -56,6 +79,12 @@ class TrayService with TrayListener {
     }
   }
 
+  @override
+  void onTrayIconRightMouseDown() {
+    // 这一步是关键，必须手动调用 popUpContextMenu
+    trayManager.popUpContextMenu();
+  }
+
   /// 处理右键菜单点击事件
   @override
   void onTrayMenuItemClick(MenuItem menuItem) async {
@@ -70,13 +99,9 @@ class TrayService with TrayListener {
         }
         break;
       case 'exit_app':
-        // 彻底退出应用
         logger.i("🚪 用户通过托盘菜单退出应用");
-        // 移除托盘图标
         trayManager.destroy();
-        // 退出进程
         exit(0);
-        break;
     }
   }
 

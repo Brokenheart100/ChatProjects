@@ -1,88 +1,102 @@
-import 'dart:convert';
-import 'package:flutterchat/models/saved_account.dart'; // 引入账户模型类
-import 'package:shared_preferences/shared_preferences.dart'; // 用于本地数据存储
+import 'dart:convert'; // 导入JSON编解码库，用于账户数据的序列化和反序列化
+import 'package:flutterchat/models/saved_account.dart'; // 导入账户模型类，定义SavedAccount的数据结构
+import 'package:shared_preferences/shared_preferences.dart'; // 导入SharedPreferences库，用于本地持久化存储
 
+/// 账户服务类，负责管理本地保存的账户信息（加载、保存、更新、删除、自动登录）
 class AccountService {
-  // 存储已保存账户列表的 SharedPreferences 键名
+  /// 存储在SharedPreferences中的账户列表键名（常量，不可修改）
   static const _kSavedAccountsKey = 'saved_accounts';
 
-  /// 加载所有已保存的账户
-  /// 从 SharedPreferences 中读取并解析账户列表JSON数据
-  /// 返回值：包含所有已保存账户的列表，无数据时返回空列表
+  /// 加载所有保存的账户，并按**最近登录时间倒序**排列
+  ///
+  /// 返回值：包含所有SavedAccount对象的列表，若没有保存的账户则返回空列表
   Future<List<SavedAccount>> loadSavedAccounts() async {
+    // 获取SharedPreferences实例，用于访问本地存储
     final prefs = await SharedPreferences.getInstance();
+    // 从本地存储中读取账户列表的JSON字符串
     final jsonString = prefs.getString(_kSavedAccountsKey);
+
+    // 如果存在保存的账户数据
     if (jsonString != null) {
+      // 将JSON字符串解码为动态类型列表
       final List<dynamic> jsonList = jsonDecode(jsonString);
-      // 将JSON列表转换为 SavedAccount 实例列表
-      return jsonList.map((json) => SavedAccount.fromJson(json)).toList();
+      // 将动态类型列表转换为SavedAccount对象列表（通过fromJson工厂方法）
+      final list = jsonList.map((json) => SavedAccount.fromJson(json)).toList();
+
+      // 按登录时间倒序排序：最近登录的账户排在列表前面
+      list.sort((a, b) => b.lastLoginAt.compareTo(a.lastLoginAt));
+      return list;
     }
+    // 若没有保存的账户，返回空列表
     return [];
   }
 
-  /// 私有方法：保存账户列表到本地
-  /// 将账户列表转换为JSON字符串并存储到 SharedPreferences
-  /// 参数：需要保存的账户列表
-  Future<void> _saveAccounts(List<SavedAccount> accounts) async {
-    final prefs = await SharedPreferences.getInstance();
-    // 将账户列表转换为可序列化的JSON列表
-    final jsonString = jsonEncode(accounts.map((acc) => acc.toJson()).toList());
-    await prefs.setString(_kSavedAccountsKey, jsonString);
-  }
-
-  /// 保存或更新一个账户
-  /// 根据用户名判断账户是否已存在：存在则更新信息，不存在则新增
-  /// 参数：需要保存或更新的账户实例
-  Future<void> saveOrUpdateAccount(SavedAccount newAccount) async {
-    final accounts = await loadSavedAccounts();
-    // 查找账户在列表中的索引（通过用户名匹配）
-    final index =
-        accounts.indexWhere((acc) => acc.username == newAccount.username);
-
-    if (index != -1) {
-      // 若存在，更新该位置的账户信息
-      accounts[index] = newAccount;
-    } else {
-      // 若不存在，添加新账户到列表
-      accounts.add(newAccount);
-    }
-    // 保存更新后的账户列表
-    await _saveAccounts(accounts);
-  }
-
-  /// 更新账户的"自动登录"状态
-  /// 核心逻辑：确保系统中只有一个账户能启用自动登录
+  /// 保存或更新账户信息
+  ///
   /// 参数：
-  ///   - targetAccount：需要更新自动登录状态的目标账户
-  ///   - isEnabled：是否启用自动登录（true启用，false禁用）
-  Future<void> updateAutoLogin(
-      SavedAccount targetAccount, bool isEnabled) async {
+  /// - newAccount：待保存或更新的SavedAccount对象
+  Future<void> saveOrUpdateAccount(SavedAccount newAccount) async {
+    // 先加载所有已保存的账户
     final accounts = await loadSavedAccounts();
-    for (var account in accounts) {
-      if (account.username == targetAccount.username) {
-        // 更新目标账户的自动登录状态
-        account.autoLoginEnabled = isEnabled;
-      } else {
-        // 当启用目标账户的自动登录时，自动禁用其他所有账户的自动登录
-        if (isEnabled) {
-          account.autoLoginEnabled = false;
+
+    // 移除旧的同名账户记录（若存在，实现"更新"逻辑）
+    accounts.removeWhere((acc) => acc.username == newAccount.username);
+
+    // 将新账户插入到列表头部（保证最新更新的账户在前面）
+    accounts.insert(0, newAccount);
+
+    // 处理自动登录逻辑：如果当前账户启用了自动登录，关闭其他所有账户的自动登录
+    if (newAccount.autoLoginEnabled) {
+      for (var acc in accounts) {
+        // 仅保留当前账户的自动登录状态，其他账户禁用
+        if (acc.username != newAccount.username) {
+          acc.autoLoginEnabled = false;
         }
       }
     }
-    // 保存更新后的账户列表
+
+    // 将更新后的账户列表持久化到本地存储
     await _saveAccounts(accounts);
   }
 
-  /// 获取启用"自动登录"的账户
-  /// 从已保存的账户中查找第一个启用自动登录的账户
-  /// 返回值：找到的账户实例，无符合条件的账户时返回null
+  /// 移除指定用户名的账户
+  ///
+  /// 参数：
+  /// - username：待移除账户的用户名
+  Future<void> removeAccount(String username) async {
+    // 加载所有已保存的账户
+    final accounts = await loadSavedAccounts();
+    // 移除匹配用户名的账户
+    accounts.removeWhere((acc) => acc.username == username);
+    // 将更新后的账户列表持久化到本地存储
+    await _saveAccounts(accounts);
+  }
+
+  /// 私有方法：将账户列表序列化为JSON并保存到SharedPreferences
+  ///
+  /// 参数：
+  /// - accounts：待保存的SavedAccount对象列表
+  Future<void> _saveAccounts(List<SavedAccount> accounts) async {
+    // 获取SharedPreferences实例
+    final prefs = await SharedPreferences.getInstance();
+    // 将账户列表转换为JSON字符串（每个SavedAccount通过toJson方法转换为Map）
+    final jsonString = jsonEncode(accounts.map((acc) => acc.toJson()).toList());
+    // 将JSON字符串保存到本地存储
+    await prefs.setString(_kSavedAccountsKey, jsonString);
+  }
+
+  /// 获取启用了自动登录的账户
+  /// 返回值：
+  /// - 若存在启用自动登录的账户，返回该SavedAccount对象
+  /// - 若不存在，返回null
   Future<SavedAccount?> getAccountForAutoLogin() async {
+    // 加载所有已保存的账户
     final accounts = await loadSavedAccounts();
     try {
-      // 查找并返回第一个启用自动登录的账户
+      // 查找第一个启用自动登录的账户（firstWhere找不到会抛出异常）
       return accounts.firstWhere((acc) => acc.autoLoginEnabled);
     } catch (e) {
-      // 当列表中没有符合条件的账户时（抛异常），返回null
+      // 若没有找到启用自动登录的账户，返回null
       return null;
     }
   }

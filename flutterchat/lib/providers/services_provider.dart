@@ -76,24 +76,19 @@ class CurrentUser extends _$CurrentUser {
 /// keepAlive: true 确保 MQTT 连接在登录后持续保持
 @Riverpod(keepAlive: true)
 MqttService mqttService(MqttServiceRef ref) {
-  // 监听当前登录用户状态，必须登录后才能初始化 MQTT 服务
   final user = ref.watch(currentUserProvider);
+
+  // 1. 如果用户未登录，不要抛异常，返回一个"未初始化"的 Service 实例
+  // 这样依赖它的组件（如 OnlineUsers）不会崩溃
   if (user == null) {
-    throw Exception("MQTT 服务初始化失败：用户未登录");
+    // 传入空字符串或特殊 ID，MqttService 内部要处理这种情况
+    return MqttService(serverAddress: '', userId: '');
   }
 
-  // 从环境变量获取 MQTT 服务器地址，默认值为 localhost（开发环境）
-  // 生产环境需通过编译参数配置：--dart-define=MQTT_HOST=xxx.xxx.xxx.xxx
   const mqttServer =
       String.fromEnvironment('MQTT_HOST', defaultValue: 'localhost');
-
-  // 创建 MQTT 服务实例：传入服务器地址和当前用户 ID（作为 MQTT 客户端标识）
   final service = MqttService(serverAddress: mqttServer, userId: user.userId);
-
-  // 初始化时自动连接 MQTT 服务器
   service.connect();
-
-  // 注册销毁回调：当 Provider 被销毁时（如用户退出登录），断开 MQTT 连接并释放资源
   ref.onDispose(() => service.dispose());
 
   return service;

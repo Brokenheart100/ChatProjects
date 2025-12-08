@@ -61,7 +61,7 @@
     },
     {
       "id": "2:2555789845053409850",
-      "lastPropertyId": "10:3817957014483886633",
+      "lastPropertyId": "11:3482922010449322525",
       "name": "ChatMessage",
       "properties": [
         {
@@ -80,9 +80,7 @@
         {
           "id": "3:1994706683563609198",
           "name": "conversationId",
-          "type": 9,
-          "flags": 2048,
-          "indexId": "3:4078276390187838145"
+          "type": 9
         },
         {
           "id": "4:508078200180549323",
@@ -118,6 +116,11 @@
           "id": "10:3817957014483886633",
           "name": "status",
           "type": 6
+        },
+        {
+          "id": "11:3482922010449322525",
+          "name": "clientMessageId",
+          "type": 9
         }
       ],
       "relations": []
@@ -166,7 +169,9 @@
   "modelVersion": 5,
   "modelVersionParserMinimum": 5,
   "retiredEntityUids": [],
-  "retiredIndexUids": [],
+  "retiredIndexUids": [
+    4078276390187838145
+  ],
   "retiredPropertyUids": [],
   "retiredRelationUids": [],
   "version": 1

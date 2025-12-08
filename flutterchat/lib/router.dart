@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutterchat/screens/search_page.dart';
 import 'package:flutterchat/screens/views/group_list_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -79,6 +80,14 @@ GoRouter router(RouterRef ref) {
         builder: (context, state) => const RegisterScreen(),
       ),
 
+      GoRoute(
+        path: '/search',
+        parentNavigatorKey: _rootNavigatorKey, // 全屏遮盖
+        builder: (context, state) {
+          final convId = state.uri.queryParameters['conversationId'];
+          return SearchPage(conversationId: convId);
+        },
+      ),
       // 3. 首页 Shell (带侧边栏的路由)
       // 使用StatefulShellRoute.indexedStack创建一个带有分支的Shell路由。
       // 这允许创建一个带有多个分支的嵌套导航结构，例如使用IndexedStack来切换不同视图，而不破坏状态。

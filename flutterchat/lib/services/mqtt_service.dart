@@ -148,6 +148,7 @@ class MqttService {
   /// [userId]：当前登录用户ID（用于生成唯一客户端ID和订阅专属主题）
   MqttService({required String serverAddress, required String userId})
       : _userId = userId {
+    if (serverAddress.isEmpty) return;
     logger.d(
         "🔧 [MQTT] 初始化客户端 | ClientID=flutter_client_$_userId | Host=$serverAddress");
 
@@ -166,6 +167,7 @@ class MqttService {
   /// 连接MQTT服务器
   /// 【注意】异步操作，连接结果通过回调函数（_onConnected/_onDisconnected）反馈
   Future<void> connect() async {
+    if (_userId.isEmpty) return;
     try {
       logger.i(
           "🔌 [MQTT] 正在连接服务器... | Host=${_client.server} | Port=${_client.port}");
@@ -267,6 +269,7 @@ class MqttService {
   /// 销毁MQTT服务，释放资源
   /// 【必须调用】在页面销毁或退出登录时调用，避免内存泄漏和无效连接
   void dispose() {
+    if (_userId.isEmpty) return;
     logger.w("🛑 [MQTT] 正在销毁服务，释放资源...");
     // 关闭所有流控制器（避免流泄漏）
     _statusStreamController.close();

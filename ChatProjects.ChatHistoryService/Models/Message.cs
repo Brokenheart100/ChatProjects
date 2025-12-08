@@ -1,6 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+
+
 
 namespace ChatProjects.ChatHistoryService.Models;
+
+[Index(nameof(ClientMessageId))]
 public class Message
 {
     [DatabaseGenerated(DatabaseGeneratedOption.None)] // 告诉EF Core我们自己提供ID
@@ -10,4 +15,5 @@ public class Message
     public string Content { get; set; } = null!;
     public int ContentType { get; set; }
     public DateTime SentAt { get; set; }
+    public string? ClientMessageId { get; set; }
 }
